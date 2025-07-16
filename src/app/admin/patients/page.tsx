@@ -286,7 +286,7 @@ export default function AdminPatientsPage() {
 
   return (
     <DashboardLayout role="admin">
-      <PageHeader title="Patients" description="Manage patient records." />
+      
       <Card>
         <CardHeader>
           <CardTitle>Patient Records</CardTitle>

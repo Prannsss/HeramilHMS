@@ -130,10 +130,7 @@ export default function AdminInventoryPage() {
 
   return (
     <DashboardLayout role="admin">
-      <PageHeader
-        title="Inventory"
-        description="Monitor and manage hospital inventory."
-      />
+      
       <Card>
         <CardHeader>
           <CardTitle>Inventory Status</CardTitle>

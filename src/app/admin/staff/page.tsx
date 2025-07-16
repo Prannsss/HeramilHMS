@@ -162,7 +162,7 @@ export default function AdminStaffPage() {
 
   return (
     <DashboardLayout role="admin">
-      <PageHeader title="Staff" description="Manage hospital staff members." />
+      
       <Card>
         <CardHeader>
           <CardTitle>Staff Members</CardTitle>

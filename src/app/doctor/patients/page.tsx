@@ -4,10 +4,7 @@ import { PageHeader } from "@/components/page-header";
 export default function DoctorPatientsPage() {
   return (
     <DashboardLayout role="doctor">
-      <PageHeader
-        title="Patients"
-        description="View your patient records."
-      />
+      
        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed shadow-sm">
         <div className="flex flex-col items-center gap-1 text-center">
           <h3 className="text-2xl font-bold tracking-tight">

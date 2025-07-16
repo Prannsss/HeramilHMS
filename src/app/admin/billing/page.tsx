@@ -143,7 +143,7 @@ export default function AdminBillingPage() {
 
   return (
     <DashboardLayout role="admin">
-      <PageHeader title="Billing" description="Manage patient invoices and payments." />
+      
       <Card>
         <CardHeader>
           <CardTitle>Patient Invoices</CardTitle>

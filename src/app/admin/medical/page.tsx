@@ -207,10 +207,7 @@ export default function AdminMedicalPage() {
 
   return (
     <DashboardLayout role="admin">
-      <PageHeader
-        title="Medical Records"
-        description="View all medical records across the hospital."
-      />
+      
       <Card>
         <CardHeader>
           <CardTitle>All Records</CardTitle>

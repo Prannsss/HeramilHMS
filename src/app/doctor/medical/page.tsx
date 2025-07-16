@@ -204,10 +204,7 @@ export default function DoctorMedicalPage() {
 
   return (
     <DashboardLayout role="doctor">
-      <PageHeader
-        title="Medical Records"
-        description="View your patients' medical records."
-      />
+      
       <Card>
         <CardHeader>
           <CardTitle>Your Patient Records</CardTitle>

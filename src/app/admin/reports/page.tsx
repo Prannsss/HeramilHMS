@@ -102,10 +102,7 @@ export default function ReportsPage() {
 
   return (
     <DashboardLayout role="admin">
-      <PageHeader
-        title="Automated Reporting"
-        description="Generate service logs and hospital usage statistics using AI."
-      />
+      
       <div className="grid grid-cols-1 gap-8">
         <Card>
           <Form {...form}>

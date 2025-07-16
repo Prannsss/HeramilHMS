@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from "react";
-import { Eye, PlusCircle, Search, MoreHorizontal, LogOut } from "lucide-react";
+import { Eye, PlusCircle, Search, MoreHorizontal, LogOut, FileText } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import {
   Card,
@@ -46,6 +46,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 // Mocking a logged-in doctor
 const LOGGED_IN_DOCTOR = "Dr. Evelyn Reed";
@@ -130,7 +132,9 @@ const initialPatients = [
 
 type Patient = typeof initialPatients[0];
 
-function PatientTable({ patients, onPatientSelect }: { patients: Patient[], onPatientSelect: (patient: Patient) => void }) {
+function PatientTable({ patients, onPatientSelect, onPrescribeSelect }: { patients: Patient[], onPatientSelect: (patient: Patient) => void, onPrescribeSelect: (patient: Patient) => void }) {
+  const isAllDischarged = patients.every(p => p.status === 'Discharged');
+
   return (
     <Table>
       <TableHeader>
@@ -169,9 +173,29 @@ function PatientTable({ patients, onPatientSelect }: { patients: Patient[], onPa
               </Badge>
             </TableCell>
             <TableCell className="text-right">
-                <Button variant="ghost" size="sm" onClick={() => onPatientSelect(patient)}>
+              {isAllDischarged ? (
+                 <Button variant="ghost" size="sm" onClick={() => onPatientSelect(patient)}>
                     <Eye className="mr-2 h-4 w-4" /> View
                 </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => onPatientSelect(patient)}>
+                      <Eye className="mr-2 h-4 w-4" /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onPrescribeSelect(patient)}>
+                      <FileText className="mr-2 h-4 w-4" /> Prescribe
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </TableCell>
           </TableRow>
         ))}
@@ -243,15 +267,61 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
   );
 }
 
+function PrescriptionModal({ patient, isOpen, onOpenChange }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void }) {
+    const [prescription, setPrescription] = useState('');
+
+    const handleSave = () => {
+        // Here you would typically save the prescription to a database
+        console.log(`Prescription for ${patient?.name}: ${prescription}`);
+        onOpenChange(false);
+        setPrescription('');
+    };
+    
+    if (!patient) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>New Prescription for {patient.name}</DialogTitle>
+                    <DialogDescription>
+                        Enter the prescription details below.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <Label htmlFor="prescription">Prescription</Label>
+                    <Textarea
+                        id="prescription"
+                        value={prescription}
+                        onChange={(e) => setPrescription(e.target.value)}
+                        placeholder="e.g., Amoxicillin 500mg, 1 tablet every 8 hours for 7 days."
+                        className="min-h-[120px]"
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Prescription</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export default function DoctorPatientsPage() {
   const [patients, setPatients] = useState(initialPatients.filter(p => p.doctor === LOGGED_IN_DOCTOR));
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [isPrescribeModalOpen, setIsPrescribeModalOpen] = useState(false);
 
   const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
-    setIsModalOpen(true);
+    setIsInfoModalOpen(true);
+  }
+
+  const handlePrescribeSelect = (patient: Patient) => {
+    setSelectedPatient(patient);
+    setIsPrescribeModalOpen(true);
   }
 
   const filteredPatients = patients.filter(patient =>
@@ -289,10 +359,10 @@ export default function DoctorPatientsPage() {
               <TabsTrigger value="discharged">Discharged ({dischargedPatients.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="active">
-              <PatientTable patients={activePatients} onPatientSelect={handlePatientSelect} />
+              <PatientTable patients={activePatients} onPatientSelect={handlePatientSelect} onPrescribeSelect={handlePrescribeSelect} />
             </TabsContent>
             <TabsContent value="discharged">
-               <PatientTable patients={dischargedPatients} onPatientSelect={handlePatientSelect} />
+               <PatientTable patients={dischargedPatients} onPatientSelect={handlePatientSelect} onPrescribeSelect={handlePrescribeSelect} />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -302,7 +372,8 @@ export default function DoctorPatientsPage() {
             </div>
         </CardFooter>
       </Card>
-      <PatientInfoModal patient={selectedPatient} isOpen={isModalOpen} onOpenChange={setIsModalOpen} />
+      <PatientInfoModal patient={selectedPatient} isOpen={isInfoModalOpen} onOpenChange={setIsInfoModalOpen} />
+      <PrescriptionModal patient={selectedPatient} isOpen={isPrescribeModalOpen} onOpenChange={setIsPrescribeModalOpen} />
     </DashboardLayout>
   );
 }

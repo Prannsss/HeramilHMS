@@ -158,15 +158,10 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
         {patients.map((patient) => (
           <TableRow key={patient.id}>
             <TableCell>
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback></AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium">{patient.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {patient.email}
-                  </div>
+              <div>
+                <div className="font-medium">{patient.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {patient.email}
                 </div>
               </div>
             </TableCell>
@@ -220,9 +215,6 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
         </DialogHeader>
         <div className="grid gap-6 py-4">
             <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                    <AvatarFallback></AvatarFallback>
-                </Avatar>
                 <div>
                     <h3 className="text-xl font-semibold">{patient.name}</h3>
                     <p className="text-sm text-muted-foreground">{patient.email}</p>

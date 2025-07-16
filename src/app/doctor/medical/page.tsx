@@ -235,12 +235,7 @@ export default function DoctorMedicalPage() {
                 <TableRow key={record.id}>
                   <TableCell className="font-medium">{record.id}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback></AvatarFallback>
-                      </Avatar>
-                      <span>{record.patient.name}</span>
-                    </div>
+                    <span>{record.patient.name}</span>
                   </TableCell>
                   <TableCell>{record.date}</TableCell>
                   <TableCell>

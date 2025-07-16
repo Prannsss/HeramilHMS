@@ -164,15 +164,10 @@ export default function AdminBillingPage() {
                 <TableRow key={bill.invoiceId}>
                   <TableCell className="font-medium">{bill.invoiceId}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback></AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{bill.patient.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {bill.patient.email}
-                        </div>
+                    <div>
+                      <div className="font-medium">{bill.patient.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {bill.patient.email}
                       </div>
                     </div>
                   </TableCell>

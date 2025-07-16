@@ -137,14 +137,9 @@ export default function AdminDashboardPage() {
                 {appointments.map((appointment) => (
                   <TableRow key={appointment.patient.email}>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback></AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{appointment.patient.name}</div>
-                          <div className="text-sm text-muted-foreground">{appointment.patient.email}</div>
-                        </div>
+                      <div>
+                        <div className="font-medium">{appointment.patient.name}</div>
+                        <div className="text-sm text-muted-foreground">{appointment.patient.email}</div>
                       </div>
                     </TableCell>
                     <TableCell>{appointment.doctor}</TableCell>

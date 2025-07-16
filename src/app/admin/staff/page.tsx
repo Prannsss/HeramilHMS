@@ -196,15 +196,9 @@ export default function AdminStaffPage() {
               {staff.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={member.avatar} alt={member.name} data-ai-hint="staff avatar" />
-                        <AvatarFallback></AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{member.name}</div>
-                        <div className="text-sm text-muted-foreground">{member.email}</div>
-                      </div>
+                    <div>
+                      <div className="font-medium">{member.name}</div>
+                      <div className="text-sm text-muted-foreground">{member.email}</div>
                     </div>
                   </TableCell>
                   <TableCell>{member.id}</TableCell>

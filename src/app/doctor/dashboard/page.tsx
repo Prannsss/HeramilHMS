@@ -152,12 +152,7 @@ export default function DoctorDashboardPage() {
                   {upcomingAppointments.map((appt) => (
                     <TableRow key={appt.patient.email}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback></AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{appt.patient.name}</span>
-                        </div>
+                        <span className="font-medium">{appt.patient.name}</span>
                       </TableCell>
                       <TableCell>{appt.time}</TableCell>
                       <TableCell>{appt.reason}</TableCell>
@@ -189,14 +184,9 @@ export default function DoctorDashboardPage() {
                   {patients.map((patient) => (
                     <TableRow key={patient.id} onClick={() => handlePatientSelect(patient)} className="cursor-pointer">
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback></AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{patient.name}</div>
-                            <div className="text-sm text-muted-foreground">{patient.email}</div>
-                          </div>
+                        <div>
+                          <div className="font-medium">{patient.name}</div>
+                          <div className="text-sm text-muted-foreground">{patient.email}</div>
                         </div>
                       </TableCell>
                       <TableCell>{patient.lastVisit}</TableCell>

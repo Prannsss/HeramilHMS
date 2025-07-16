@@ -181,9 +181,9 @@ export default function ReportsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Generated Report</CardTitle>
+                <CardTitle>Write or Generate a Report</CardTitle>
                 <CardDescription>
-                  AI-generated summary and insights will appear here.
+                  You can either write your own report or generate one using AI.
                 </CardDescription>
               </div>
               {report && !isLoading && (

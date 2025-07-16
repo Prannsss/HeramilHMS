@@ -38,16 +38,16 @@ export default function LoginPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                   <Link
-                    href="#"
-                    className="ml-auto inline-block text-sm underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input id="password" type="password" required />
+                 <div className="text-right">
+                    <Link
+                        href="#"
+                        className="inline-block text-sm underline"
+                    >
+                        Forgot your password?
+                    </Link>
+                 </div>
               </div>
               <Button type="submit" className="w-full">
                 Login

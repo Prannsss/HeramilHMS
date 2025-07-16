@@ -19,7 +19,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
   const adminNavItems = [
     { href: "/admin/dashboard", label: "Dashboard" },
-    { href: "/admin/reports", label: "Reports" },
+    { href: "/admin/reports", label: "Report" },
     { href: "/admin/patients", label: "Patients" },
     { href: "/admin/medical", label: "Medical" },
     { href: "/admin/staff", label: "Staff" },

@@ -325,9 +325,6 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                 </div>
             </div>
         </div>
-        <DialogFooter>
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

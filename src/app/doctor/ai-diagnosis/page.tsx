@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Check, ChevronsUpDown } from 'lucide-react';
 
 import DashboardLayout from '@/components/dashboard-layout';
 import { PageHeader } from '@/components/page-header';
@@ -25,17 +26,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Textarea } from '@/components/ui/textarea';
-import { aiDiagnosisSupport, AiDiagnosisSupportOutput } from '@/ai/flows/ai-diagnosis-support';
+import { aiDiagnosisSupport } from '@/ai/flows/ai-diagnosis-support';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 const initialPatients = [
   {
@@ -98,6 +94,64 @@ const formSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient.'),
   diagnosis: z.string().optional(),
 });
+
+function PatientCombobox({ patients, field }: { patients: Patient[], field: any }) {
+  const [open, setOpen] = useState(false)
+  
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <FormControl>
+          <Button
+            variant="outline"
+            role="combobox"
+            className={cn(
+              "w-full justify-between",
+              !field.value && "text-muted-foreground"
+            )}
+          >
+            {field.value
+              ? patients.find(
+                  (patient) => patient.id === field.value
+                )?.name
+              : "Select a patient"}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </FormControl>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command>
+          <CommandInput placeholder="Search patient..." />
+          <CommandList>
+            <CommandEmpty>No patient found.</CommandEmpty>
+            <CommandGroup>
+              {patients.map((patient) => (
+                <CommandItem
+                  value={patient.name}
+                  key={patient.id}
+                  onSelect={() => {
+                    field.onChange(patient.id)
+                    setOpen(false)
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      patient.id === field.value
+                        ? "opacity-100"
+                        : "opacity-0"
+                    )}
+                  />
+                  {patient.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 export default function AiDiagnosisPage() {
   const [patients] = useState<Patient[]>(initialPatients);
@@ -172,28 +226,15 @@ export default function AiDiagnosisPage() {
                     control={form.control}
                     name="patientId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col">
                         <FormLabel>Patient</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a patient" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {patients.map(patient => (
-                              <SelectItem key={patient.id} value={patient.id}>
-                                {patient.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <PatientCombobox patients={patients} field={field} />
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   {selectedPatient && (
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-sm pt-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <p className="font-medium text-muted-foreground">DOB</p>

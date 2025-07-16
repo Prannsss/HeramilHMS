@@ -46,7 +46,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
                     asChild
                     size="lg"
                     className={cn(
-                        "w-full justify-start text-lg bg-destructive text-destructive-foreground hover:bg-red-700 hover:text-destructive-foreground"
+                        "w-full justify-start text-lg text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     )}
                 >
                     <Link href="/">

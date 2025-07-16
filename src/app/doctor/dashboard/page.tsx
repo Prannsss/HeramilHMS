@@ -252,7 +252,7 @@ export default function DoctorDashboardPage() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                    <Button className="w-full">Update Information</Button>
+                    <Button className="w-full">Save Notes</Button>
                     </CardFooter>
                 </>
             ) : (

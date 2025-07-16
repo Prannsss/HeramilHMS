@@ -111,9 +111,9 @@ export default function ReportsPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardHeader>
-                <CardTitle>Report Options</CardTitle>
+                <CardTitle>Write a report</CardTitle>
                 <CardDescription>
-                  Select the date range for your report.
+                  Select a date range to generate a report, or write your own below.
                 </CardDescription>
               </CardHeader>
               <CardContent>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from "react";
-import { Eye, PlusCircle, Search } from "lucide-react";
+import { Eye, PlusCircle, Search, MoreHorizontal, LogOut } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -26,6 +26,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -41,7 +48,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-const patients = [
+const initialPatients = [
   {
     id: "PAT001",
     name: "Amelia Johnson",
@@ -54,6 +61,7 @@ const patients = [
     allergies: "Peanuts",
     dateOfAdmission: "2023-06-12",
     reasonForAdmission: "Routine Check-up",
+    dateOfDischarge: null,
   },
   {
     id: "PAT002",
@@ -67,6 +75,7 @@ const patients = [
     allergies: "None",
     dateOfAdmission: "2023-06-08",
     reasonForAdmission: "Fractured Arm",
+    dateOfDischarge: null,
   },
   {
     id: "PAT003",
@@ -94,6 +103,7 @@ const patients = [
     allergies: "Aspirin",
     dateOfAdmission: "2023-06-18",
     reasonForAdmission: "Allergic Reaction",
+    dateOfDischarge: null,
   },
   {
     id: "PAT005",
@@ -107,12 +117,13 @@ const patients = [
     allergies: "None",
     dateOfAdmission: "2023-05-28",
     reasonForAdmission: "Migraine Treatment",
+    dateOfDischarge: null,
   },
 ];
 
-type Patient = typeof patients[0];
+type Patient = typeof initialPatients[0];
 
-function PatientTable({ patients, onPatientSelect }: { patients: Patient[], onPatientSelect: (patient: Patient) => void }) {
+function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Patient[], onPatientSelect: (patient: Patient) => void, onDischarge: (patientId: string) => void }) {
   return (
     <Table>
       <TableHeader>
@@ -151,9 +162,25 @@ function PatientTable({ patients, onPatientSelect }: { patients: Patient[], onPa
               </Badge>
             </TableCell>
             <TableCell className="text-right">
-              <Button variant="ghost" size="icon" onClick={() => onPatientSelect(patient)}>
-                <Eye className="h-4 w-4" />
-              </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => onPatientSelect(patient)}>
+                      <Eye className="mr-2 h-4 w-4" /> View Details
+                    </DropdownMenuItem>
+                    {patient.status === 'Active' && (
+                        <DropdownMenuItem onClick={() => onDischarge(patient.id)}>
+                            <LogOut className="mr-2 h-4 w-4" /> Discharge Patient
+                        </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}
@@ -226,6 +253,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
 }
 
 export default function AdminPatientsPage() {
+  const [patients, setPatients] = useState(initialPatients);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -234,6 +262,19 @@ export default function AdminPatientsPage() {
     setSelectedPatient(patient);
     setIsModalOpen(true);
   }
+
+  const handleDischarge = (patientId: string) => {
+    setPatients(patients.map(p => {
+        if (p.id === patientId) {
+            return {
+                ...p,
+                status: 'Discharged',
+                dateOfDischarge: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+            };
+        }
+        return p;
+    }));
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -275,10 +316,10 @@ export default function AdminPatientsPage() {
               <TabsTrigger value="discharged">Discharged ({dischargedPatients.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="active">
-              <PatientTable patients={activePatients} onPatientSelect={handlePatientSelect} />
+              <PatientTable patients={activePatients} onPatientSelect={handlePatientSelect} onDischarge={handleDischarge} />
             </TabsContent>
             <TabsContent value="discharged">
-               <PatientTable patients={dischargedPatients} onPatientSelect={handlePatientSelect} />
+               <PatientTable patients={dischargedPatients} onPatientSelect={handlePatientSelect} onDischarge={handleDischarge} />
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -45,7 +45,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
             size="lg"
             isActive={pathname.startsWith(item.href) && (item.href !== '/admin/dashboard' && item.href !== '/doctor/dashboard' ? pathname.length > item.href.length : pathname === item.href)}
             className={cn(
-              "w-full justify-start text-base",
+              "w-full justify-start text-lg",
               pathname.startsWith(item.href) && (item.href !== '/admin/dashboard' && item.href !== '/doctor/dashboard' ? pathname.length > item.href.length : pathname === item.href) && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
               "hover:bg-primary/90 hover:text-primary-foreground"
             )}

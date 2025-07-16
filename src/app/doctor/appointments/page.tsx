@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, Undo2 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard-layout';
 import { PageHeader } from '@/components/page-header';
 import {
@@ -134,7 +134,7 @@ function AppointmentTable({
               </Badge>
             </TableCell>
             <TableCell className="text-right">
-              {appt.status === 'Upcoming' && (
+              {appt.status === 'Upcoming' ? (
                 <div className="flex items-center justify-end gap-2">
                   <Button
                     variant="outline"
@@ -155,6 +155,16 @@ function AppointmentTable({
                     <span className="sr-only">Reject</span>
                   </Button>
                 </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onStatusChange(appt.id, 'Upcoming')}
+                >
+                  <Undo2 className="h-4 w-4" />
+                  <span className="sr-only">Undo</span>
+                </Button>
               )}
             </TableCell>
           </TableRow>

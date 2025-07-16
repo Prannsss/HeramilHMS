@@ -38,7 +38,6 @@ const initialPatients = [
     id: "PAT001",
     name: "Amelia Johnson",
     email: "amelia.j@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
     status: "Active",
@@ -51,7 +50,6 @@ const initialPatients = [
     id: "PAT002",
     name: "Benjamin Carter",
     email: "ben.c@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
     status: "Active",
@@ -64,7 +62,6 @@ const initialPatients = [
     id: "PAT004",
     name: "Daniel Evans",
     email: "daniel.e@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "2001-01-30",
     lastVisit: "2023-06-18",
     status: "Active",
@@ -77,7 +74,6 @@ const initialPatients = [
     id: "PAT005",
     name: "Evelyn Foster",
     email: "evelyn.f@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1999-07-19",
     lastVisit: "2023-06-01",
     status: "Active",
@@ -240,6 +236,10 @@ export default function AiDiagnosisPage() {
                         <div>
                           <p className="font-medium text-muted-foreground">Blood Type</p>
                           <p>{selectedPatient.bloodType}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-muted-foreground">DOA</p>
+                          <p>{selectedPatient.dateOfAdmission}</p>
                         </div>
                       </div>
                       <div>

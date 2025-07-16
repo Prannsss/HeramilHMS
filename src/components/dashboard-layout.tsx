@@ -26,7 +26,7 @@ export default function DashboardLayout({
       <Sidebar>
         <SidebarRail />
         <div className="flex h-full flex-col">
-          <SidebarHeader className="p-4">
+          <SidebarHeader className="items-center p-4">
             <Logo />
           </SidebarHeader>
           <SidebarContent className="p-4 pt-4">

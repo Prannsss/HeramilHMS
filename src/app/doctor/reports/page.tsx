@@ -195,23 +195,18 @@ export default function ReportsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading && (
+             {isLoading ? (
               <div className="flex items-center justify-center pt-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : (
+              <Textarea
+                placeholder="Your report will be displayed here. You can also start writing your own."
+                value={report}
+                onChange={(e) => setReport(e.target.value)}
+                className="h-96 w-full text-sm bg-secondary"
+              />
             )}
-            {report && (
-               <Textarea
-               readOnly
-               value={report}
-               className="h-96 w-full text-sm bg-secondary"
-             />
-            )}
-             {!isLoading && !report && (
-              <div className="flex h-full items-center justify-center">
-                  <p className="text-muted-foreground">Your report will be displayed here.</p>
-              </div>
-             )}
           </CardContent>
         </Card>
       </div>

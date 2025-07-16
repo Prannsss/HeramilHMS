@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -51,6 +52,8 @@ const patients = [
     status: "Active",
     bloodType: "A+",
     allergies: "Peanuts",
+    dateOfAdmission: "2023-06-12",
+    reasonForAdmission: "Routine Check-up",
   },
   {
     id: "PAT002",
@@ -62,6 +65,8 @@ const patients = [
     status: "Active",
     bloodType: "O-",
     allergies: "None",
+    dateOfAdmission: "2023-06-08",
+    reasonForAdmission: "Fractured Arm",
   },
   {
     id: "PAT003",
@@ -73,6 +78,9 @@ const patients = [
     status: "Discharged",
     bloodType: "B+",
     allergies: "Pollen",
+    dateOfAdmission: "2023-05-15",
+    reasonForAdmission: "Minor Surgery",
+    dateOfDischarge: "2023-05-20",
   },
   {
     id: "PAT004",
@@ -84,6 +92,8 @@ const patients = [
     status: "Active",
     bloodType: "AB+",
     allergies: "Aspirin",
+    dateOfAdmission: "2023-06-18",
+    reasonForAdmission: "Allergic Reaction",
   },
   {
     id: "PAT005",
@@ -95,6 +105,8 @@ const patients = [
     status: "Active",
     bloodType: "O+",
     allergies: "None",
+    dateOfAdmission: "2023-05-28",
+    reasonForAdmission: "Migraine Treatment",
   },
 ];
 
@@ -155,27 +167,24 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Patient Information</DialogTitle>
           <DialogDescription>Details for {patient.name}.</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-6 py-4">
             <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
+                <Avatar className="h-20 w-20">
                     <AvatarImage src={patient.avatar} alt={patient.name} data-ai-hint="patient avatar" />
                     <AvatarFallback>{patient.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                 </Avatar>
                 <div>
-                    <h3 className="text-lg font-semibold">{patient.name}</h3>
+                    <h3 className="text-xl font-semibold">{patient.name}</h3>
                     <p className="text-sm text-muted-foreground">{patient.email}</p>
+                    <p className="text-sm text-muted-foreground">{patient.id}</p>
                 </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                    <p className="font-medium text-muted-foreground">Patient ID</p>
-                    <p>{patient.id}</p>
-                </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
                     <p className="font-medium text-muted-foreground">Date of Birth</p>
                     <p>{patient.dob}</p>
@@ -189,12 +198,22 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                     <p>{patient.allergies}</p>
                 </div>
                  <div>
-                    <p className="font-medium text-muted-foreground">Last Visit</p>
-                    <p>{patient.lastVisit}</p>
-                </div>
-                <div>
                     <p className="font-medium text-muted-foreground">Status</p>
                     <p>{patient.status}</p>
+                </div>
+                <div>
+                    <p className="font-medium text-muted-foreground">Date of Admission</p>
+                    <p>{patient.dateOfAdmission}</p>
+                </div>
+                {patient.status === 'Discharged' && patient.dateOfDischarge && (
+                    <div>
+                        <p className="font-medium text-muted-foreground">Date of Discharge</p>
+                        <p>{patient.dateOfDischarge}</p>
+                    </div>
+                )}
+                 <div className="col-span-2">
+                    <p className="font-medium text-muted-foreground">Reason for Admission</p>
+                    <p>{patient.reasonForAdmission}</p>
                 </div>
             </div>
         </div>

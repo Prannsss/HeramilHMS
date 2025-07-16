@@ -40,6 +40,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 
 const initialBills = [
@@ -107,10 +108,7 @@ const initialBills = [
 type BillStatus = "Paid" | "Unpaid" | "Pending";
 type Bill = Omit<typeof initialBills[0], 'patient'> & { patient: { name: string, email: string }};
 
-
-export default function AdminBillingPage() {
-  const [bills, setBills] = useState(initialBills);
-  
+function BillTable({ bills, onStatusChange, onDelete }: { bills: Bill[], onStatusChange: (invoiceId: string, newStatus: BillStatus) => void, onDelete: (invoiceId: string) => void }) {
   const getStatusVariant = (status: string) => {
     switch (status) {
       case "Paid":
@@ -123,7 +121,82 @@ export default function AdminBillingPage() {
         return "outline";
     }
   };
+  
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Invoice ID</TableHead>
+          <TableHead>Patient</TableHead>
+          <TableHead>Date</TableHead>
+          <TableHead>Amount</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {bills.map((bill) => (
+          <TableRow key={bill.invoiceId}>
+            <TableCell className="font-medium">{bill.invoiceId}</TableCell>
+            <TableCell>
+              <div>
+                <div className="font-medium">{bill.patient.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {bill.patient.email}
+                </div>
+              </div>
+            </TableCell>
+            <TableCell>{bill.date}</TableCell>
+            <TableCell>
+                {`$${bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2)}`}
+            </TableCell>
+            <TableCell>
+              <Badge variant={getStatusVariant(bill.status)} className={bill.status === 'Pending' ? 'bg-yellow-500 text-black' : ''}>
+                {bill.status}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">Open menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Invoice
+                      </DropdownMenuItem>
+                    </DialogTrigger>
+                    <InvoiceModal bill={bill} />
+                  </Dialog>
+                  <DropdownMenuItem onClick={() => onStatusChange(bill.invoiceId, 'Paid')}>
+                      <Edit className="mr-2 h-4 w-4" /> Mark as Paid
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onStatusChange(bill.invoiceId, 'Unpaid')}>
+                      <Edit className="mr-2 h-4 w-4" /> Mark as Unpaid
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-red-500" onClick={() => onDelete(bill.invoiceId)}>
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
+
+export default function AdminBillingPage() {
+  const [bills, setBills] = useState(initialBills);
+  
   const handleStatusChange = (invoiceId: string, newStatus: BillStatus) => {
     setBills(bills.map(bill => bill.invoiceId === invoiceId ? {...bill, status: newStatus} : bill));
   }
@@ -131,6 +204,10 @@ export default function AdminBillingPage() {
   const handleDelete = (invoiceId: string) => {
     setBills(bills.filter(bill => bill.invoiceId !== invoiceId));
   }
+  
+  const paidBills = bills.filter(bill => bill.status === 'Paid');
+  const unpaidBills = bills.filter(bill => bill.status === 'Unpaid');
+  const pendingBills = bills.filter(bill => bill.status === 'Pending');
 
   return (
     <DashboardLayout role="admin">
@@ -148,73 +225,22 @@ export default function AdminBillingPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice ID</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {bills.map((bill) => (
-                <TableRow key={bill.invoiceId}>
-                  <TableCell className="font-medium">{bill.invoiceId}</TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{bill.patient.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {bill.patient.email}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{bill.date}</TableCell>
-                  <TableCell>
-                     {`$${bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2)}`}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(bill.status)} className={bill.status === 'Pending' ? 'bg-yellow-500 text-black' : ''}>
-                      {bill.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Invoice
-                            </DropdownMenuItem>
-                          </DialogTrigger>
-                          <InvoiceModal bill={bill} />
-                        </Dialog>
-                        <DropdownMenuItem onClick={() => handleStatusChange(bill.invoiceId, 'Paid')}>
-                            <Edit className="mr-2 h-4 w-4" /> Mark as Paid
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(bill.invoiceId, 'Unpaid')}>
-                            <Edit className="mr-2 h-4 w-4" /> Mark as Unpaid
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(bill.invoiceId)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Tabs defaultValue="unpaid">
+            <TabsList>
+              <TabsTrigger value="unpaid">Unpaid ({unpaidBills.length})</TabsTrigger>
+              <TabsTrigger value="pending">Pending ({pendingBills.length})</TabsTrigger>
+              <TabsTrigger value="paid">Paid ({paidBills.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="unpaid">
+              <BillTable bills={unpaidBills} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+            </TabsContent>
+            <TabsContent value="pending">
+              <BillTable bills={pendingBills} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+            </TabsContent>
+            <TabsContent value="paid">
+              <BillTable bills={paidBills} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+            </TabsContent>
+          </Tabs>
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">

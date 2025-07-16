@@ -30,15 +30,22 @@ const prompt = ai.definePrompt({
   name: 'generateServiceLogReportPrompt',
   input: {schema: GenerateServiceLogReportInputSchema},
   output: {schema: GenerateServiceLogReportOutputSchema},
-  prompt: `You are a hospital administrator. Generate a summary report of service logs and hospital usage statistics between {{startDate}} and {{endDate}}. The report should include key metrics and trends such as:
+  prompt: `You are a hospital administrator. Generate a report of service logs and hospital usage statistics between {{startDate}} and {{endDate}}.
 
-*   Total number of patients served
-*   Average patient wait time
-*   Number of appointments scheduled and completed
-*   Most common types of services provided
-*   Overall hospital occupancy rate
+The report must be structured in the following format:
 
-Provide insights into any significant trends or patterns observed during this period. Focus on providing actionable information that can help improve hospital operations and patient care.`,
+Report for {{startDate}} to {{endDate}}
+
+Body:
+- Total number of patients served: [Number]
+- Average patient wait time: [Time]
+- Number of appointments scheduled and completed: [Number]
+- Most common types of services provided: [List]
+- Overall hospital occupancy rate: [Percentage]
+
+Summary:
+[Provide insights into any significant trends or patterns observed during this period. Focus on providing actionable information that can help improve hospital operations and patient care.]
+`,
 });
 
 const generateServiceLogReportFlow = ai.defineFlow(

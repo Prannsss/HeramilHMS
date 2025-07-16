@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { MoreHorizontal, Search, Eye, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -33,6 +33,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const medicalRecords = [
   {
@@ -112,6 +119,7 @@ type MedicalRecord = typeof medicalRecords[0];
 
 function MedicalRecordModal({ record }: { record: MedicalRecord }) {
   const totalAmount = record.bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2);
+  
   return (
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
@@ -200,6 +208,35 @@ export default function AdminMedicalPage() {
     }
   };
 
+  const handlePrint = (record: MedicalRecord) => {
+    const recordContent = `
+                        Heramil Hospital
+
+---------------------------------------------------------
+
+Record ID: ${record.id}
+Patient: ${record.patient.name}
+Doctor: ${record.doctor}
+Date: ${record.date}
+Type: ${record.type}
+
+---------------------------------------------------------
+
+Details:
+${record.details}
+
+`;
+    const blob = new Blob([recordContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `medical-record-${record.id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
 
   return (
     <DashboardLayout role="admin">
@@ -255,9 +292,27 @@ export default function AdminMedicalPage() {
                   <TableCell className="max-w-xs truncate">{record.details}</TableCell>
                   <TableCell className="text-right">
                     <Dialog>
-                      <DialogTrigger asChild>
-                         <Button variant="ghost" size="sm">View</Button>
-                      </DialogTrigger>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Record
+                            </DropdownMenuItem>
+                          </DialogTrigger>
+                          <DropdownMenuItem onClick={() => handlePrint(record)}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print Record
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <MedicalRecordModal record={record} />
                     </Dialog>
                   </TableCell>

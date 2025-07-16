@@ -24,6 +24,15 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const medicalRecords = [
   {
@@ -33,6 +42,15 @@ const medicalRecords = [
     date: '2023-06-15',
     type: 'Prescription',
     details: 'Lisinopril 10mg for hypertension.',
+    bill: {
+        invoiceId: 'INV-2023-001',
+        amount: '$250.00',
+        status: 'Paid',
+        items: [
+            { description: 'Consultation Fee', amount: '$150.00' },
+            { description: 'Medication - Lisinopril', amount: '$100.00' },
+        ],
+    },
   },
   {
     id: 'REC002',
@@ -41,6 +59,12 @@ const medicalRecords = [
     date: '2023-06-18',
     type: 'Test Result',
     details: 'Blood Panel: All levels normal.',
+     bill: {
+        invoiceId: 'INV-2023-002',
+        amount: '$150.75',
+        status: 'Unpaid',
+        items: [{ description: 'Lab Test - Blood Panel', amount: '$150.75' }],
+    },
   },
   {
     id: 'REC003',
@@ -49,6 +73,12 @@ const medicalRecords = [
     date: '2023-06-20',
     type: 'Diagnosis',
     details: 'Diagnosed with seasonal allergies.',
+     bill: {
+        invoiceId: 'INV-2023-003',
+        amount: '$100.00',
+        status: 'Paid',
+        items: [{ description: 'Consultation', amount: '$100.00' }],
+    },
   },
   {
     id: 'REC004',
@@ -57,6 +87,15 @@ const medicalRecords = [
     date: '2023-06-22',
     type: 'Prescription',
     details: 'Amoxicillin 500mg for infection.',
+     bill: {
+        invoiceId: 'INV-2023-004',
+        amount: '$75.50',
+        status: 'Pending',
+        items: [
+            { description: 'Follow-up Visit', amount: '$50.00' },
+            { description: 'Medication - Amoxicillin', amount: '$25.50' },
+        ],
+    },
   },
   {
     id: 'REC005',
@@ -65,10 +104,82 @@ const medicalRecords = [
     date: '2023-06-25',
     type: 'Test Result',
     details: 'X-Ray: No fractures detected.',
+     bill: {
+        invoiceId: 'INV-2023-005',
+        amount: '$180.00',
+        status: 'Unpaid',
+        items: [{ description: 'X-Ray', amount: '$180.00' }],
+    },
   },
 ];
 
 type MedicalRecord = typeof medicalRecords[0];
+
+function MedicalRecordModal({ record }: { record: MedicalRecord }) {
+  return (
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Medical Record Details</DialogTitle>
+        <DialogDescription>
+          Record ID: {record.id}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-6 py-4 text-sm">
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+                <p className="font-medium text-muted-foreground">Patient</p>
+                <p>{record.patient.name}</p>
+            </div>
+             <div>
+                <p className="font-medium text-muted-foreground">Doctor</p>
+                <p>{record.doctor}</p>
+            </div>
+             <div>
+                <p className="font-medium text-muted-foreground">Date</p>
+                <p>{record.date}</p>
+            </div>
+             <div>
+                <p className="font-medium text-muted-foreground">Record Type</p>
+                <p>{record.type}</p>
+            </div>
+             <div className="col-span-2">
+                <p className="font-medium text-muted-foreground">Details</p>
+                <p>{record.details}</p>
+            </div>
+        </div>
+        <div className="border-t pt-4">
+            <h4 className="font-semibold mb-2 text-base">Billing Information</h4>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                <div>
+                    <p className="font-medium text-muted-foreground">Invoice ID</p>
+                    <p>{record.bill.invoiceId}</p>
+                </div>
+                 <div>
+                    <p className="font-medium text-muted-foreground">Bill Status</p>
+                    <p>{record.bill.status}</p>
+                </div>
+            </div>
+            <div className="border-t pt-2 mt-4">
+                <h5 className="font-semibold mb-2">Invoice Items</h5>
+                {record.bill.items.map((item, index) => (
+                    <div key={index} className="flex justify-between">
+                        <span>{item.description}</span>
+                        <span>{item.amount}</span>
+                    </div>
+                ))}
+            </div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-4">
+                <span>Total Amount</span>
+                <span>{record.bill.amount}</span>
+            </div>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button>Close</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
 
 export default function DoctorMedicalPage() {
   const [records, setRecords] = useState<MedicalRecord[]>(medicalRecords);
@@ -147,7 +258,12 @@ export default function DoctorMedicalPage() {
                   </TableCell>
                   <TableCell className="max-w-xs truncate">{record.details}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">View</Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                         <Button variant="ghost" size="sm">View</Button>
+                      </DialogTrigger>
+                      <MedicalRecordModal record={record} />
+                    </Dialog>
                   </TableCell>
                 </TableRow>
               ))}

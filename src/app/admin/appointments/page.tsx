@@ -98,9 +98,11 @@ const initialAppointments: Appointment[] = [
 function AppointmentTable({
   appointments,
   onStatusChange,
+  onFinalize,
 }: {
   appointments: Appointment[];
   onStatusChange: (id: string, status: AppointmentStatus) => void;
+  onFinalize: (id: string) => void;
 }) {
   return (
     <Table>
@@ -175,6 +177,15 @@ function AppointmentTable({
                     <Undo2 className="h-4 w-4" />
                     <span className="sr-only">Undo</span>
                   </Button>
+                   <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700"
+                    onClick={() => onFinalize(appt.id)}
+                  >
+                    <Check className="h-4 w-4" />
+                    <span className="sr-only">Finalize</span>
+                  </Button>
                 </div>
               )}
             </TableCell>
@@ -195,6 +206,10 @@ export default function AdminAppointmentsPage() {
         appt.id === id ? { ...appt, status } : appt
       )
     );
+  };
+  
+  const handleFinalize = (id: string) => {
+    setAppointments(appointments.filter((appt) => appt.id !== id));
   };
 
   const requestAppointments = appointments.filter(
@@ -233,18 +248,21 @@ export default function AdminAppointmentsPage() {
               <AppointmentTable
                 appointments={requestAppointments}
                 onStatusChange={handleStatusChange}
+                onFinalize={handleFinalize}
               />
             </TabsContent>
             <TabsContent value="verified">
               <AppointmentTable
                 appointments={verifiedAppointments}
                 onStatusChange={handleStatusChange}
+                onFinalize={handleFinalize}
               />
             </TabsContent>
              <TabsContent value="rejected">
               <AppointmentTable
                 appointments={rejectedAppointments}
                 onStatusChange={handleStatusChange}
+                onFinalize={handleFinalize}
               />
             </TabsContent>
           </Tabs>

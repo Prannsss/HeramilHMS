@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarFallback>{appointment.patient.name.charAt(0)}</AvatarFallback>
+                          <AvatarFallback></AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium">{appointment.patient.name}</div>

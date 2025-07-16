@@ -154,7 +154,7 @@ export default function DoctorDashboardPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback>{appt.patient.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback></AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{appt.patient.name}</span>
                         </div>
@@ -191,7 +191,7 @@ export default function DoctorDashboardPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
+                            <AvatarFallback></AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="font-medium">{patient.name}</div>
@@ -228,7 +228,7 @@ export default function DoctorDashboardPage() {
                     <CardContent className="flex-1 flex flex-col space-y-4">
                         <div className="flex justify-center">
                             <Avatar className="h-24 w-24">
-                                <AvatarFallback>{selectedPatient.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                <AvatarFallback></AvatarFallback>
                             </Avatar>
                         </div>
                         <div className="space-y-1">

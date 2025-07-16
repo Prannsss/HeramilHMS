@@ -278,7 +278,7 @@ ${record.details}
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback>{record.patient.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback></AvatarFallback>
                       </Avatar>
                       <span>{record.patient.name}</span>
                     </div>

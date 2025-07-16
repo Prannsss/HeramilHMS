@@ -24,7 +24,7 @@ export function UserNav() {
         <Button variant="ghost" className="relative h-10 w-10 rounded-full mt-2">
           <Avatar className="h-10 w-10">
             <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
-            <AvatarFallback>U</AvatarFallback>
+            <AvatarFallback></AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

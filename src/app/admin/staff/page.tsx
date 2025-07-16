@@ -199,7 +199,7 @@ export default function AdminStaffPage() {
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={member.avatar} alt={member.name} data-ai-hint="staff avatar" />
-                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback></AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-medium">{member.name}</div>

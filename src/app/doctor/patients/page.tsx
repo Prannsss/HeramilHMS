@@ -191,7 +191,7 @@ function PatientTable({ patients, onPatientSelect, onPrescribeSelect }: { patien
             <TableCell>
               <div className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback></AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="font-medium">{patient.name}</div>
@@ -256,7 +256,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
         <div className="grid gap-6 py-4">
             <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                    <AvatarFallback>{patient.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarFallback></AvatarFallback>
                 </Avatar>
                 <div>
                     <h3 className="text-xl font-semibold">{patient.name}</h3>

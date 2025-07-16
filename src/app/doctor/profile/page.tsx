@@ -37,7 +37,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -206,23 +207,31 @@ export default function DoctorProfilePage() {
       />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
-          <Card className="h-full">
-            <CardContent className="flex h-full flex-col items-center justify-center gap-4 p-6">
-              <div className="relative">
-                <Avatar className="h-32 w-32">
-                  <AvatarImage src={avatarPreview || "https://placehold.co/128x128.png"} data-ai-hint="doctor avatar" />
-                  <AvatarFallback>DR</AvatarFallback>
+          <Card className="h-full overflow-hidden">
+            <CardContent className="p-0 h-full">
+              <div className="relative h-full w-full">
+                <Avatar className="h-full w-full rounded-none">
+                  <AvatarImage
+                    src={avatarPreview || "https://placehold.co/400x400.png"}
+                    data-ai-hint="doctor avatar"
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="rounded-none">DR</AvatarFallback>
                 </Avatar>
-                <Button size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8" onClick={handleAvatarClick}>
-                  <Pen className="h-4 w-4" />
+                <Button
+                  size="icon"
+                  className="absolute bottom-2 right-2 rounded-full h-10 w-10"
+                  onClick={handleAvatarClick}
+                >
+                  <Pen className="h-5 w-5" />
                   <span className="sr-only">Edit Profile Picture</span>
                 </Button>
                 <Input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept="image/*"
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*"
                 />
               </div>
             </CardContent>

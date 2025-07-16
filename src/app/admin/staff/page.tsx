@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -56,7 +57,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -77,7 +77,6 @@ type StaffMember = {
     id: string;
     name: string;
     email: string;
-    avatar: string;
     role: Role;
     department: string;
     status: StaffStatus;
@@ -88,7 +87,6 @@ const initialStaff: StaffMember[] = [
     id: "STF001",
     name: "Dr. Evelyn Reed",
     email: "e.reed@email.com",
-    avatar: "https://placehold.co/32x32.png",
     role: "Cardiologist",
     department: "Cardiology",
     status: "Active",
@@ -97,7 +95,6 @@ const initialStaff: StaffMember[] = [
     id: "STF002",
     name: "Nurse Liam Garcia",
     email: "l.garcia@email.com",
-    avatar: "https://placehold.co/32x32.png",
     role: "Registered Nurse",
     department: "Emergency",
     status: "Active",
@@ -106,7 +103,6 @@ const initialStaff: StaffMember[] = [
     id: "STF003",
     name: "Dr. Kenji Tanaka",
     email: "k.tanaka@email.com",
-    avatar: "https://placehold.co/32x32.png",
     role: "Pediatrician",
     department: "Pediatrics",
     status: "On Leave",
@@ -115,7 +111,6 @@ const initialStaff: StaffMember[] = [
     id: "STF004",
     name: "Lena Petrova",
     email: "l.petrova@email.com",
-    avatar: "https://placehold.co/32x32.png",
     role: "Administrator",
     department: "Administration",
     status: "Active",
@@ -124,7 +119,6 @@ const initialStaff: StaffMember[] = [
     id: "STF005",
     name: "Dr. Mark O'Connell",
     email: "m.oconnell@email.com",
-    avatar: "https://placehold.co/32x32.png",
     role: "Radiologist",
     department: "Radiology",
     status: "Retired",
@@ -134,11 +128,10 @@ const initialStaff: StaffMember[] = [
 export default function AdminStaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
 
-  const handleAddStaff = (newStaffMember: Omit<StaffMember, "id" | "avatar">) => {
+  const handleAddStaff = (newStaffMember: Omit<StaffMember, "id">) => {
     const newMember: StaffMember = {
       ...newStaffMember,
       id: `STF${(staff.length + 1).toString().padStart(3, "0")}`,
-      avatar: "https://placehold.co/32x32.png",
     };
     setStaff([...staff, newMember]);
   };
@@ -212,8 +205,9 @@ export default function AdminStaffPage() {
                   <TableCell className="text-right">
                     {member.status === 'Retired' ? (
                         <div className="flex justify-end items-center gap-2">
-                           <Button variant="ghost" size="sm" onClick={() => handleStatusChange(member.id, 'Active')}>
-                                <Undo2 className="mr-2 h-4 w-4" /> Undo
+                           <Button variant="ghost" size="icon" onClick={() => handleStatusChange(member.id, 'Active')} className="h-8 w-8">
+                                <Undo2 className="h-4 w-4" />
+                                <span className="sr-only">Undo</span>
                             </Button>
                            <DeleteStaffModal staffName={member.name} onDelete={() => handleDelete(member.id)} />
                        </div>
@@ -250,7 +244,7 @@ export default function AdminStaffPage() {
   );
 }
 
-function AddStaffModal({ children, onAddStaff }: { children: React.ReactNode, onAddStaff: (staff: Omit<StaffMember, "id" | "avatar">) => void }) {
+function AddStaffModal({ children, onAddStaff }: { children: React.ReactNode, onAddStaff: (staff: Omit<StaffMember, "id">) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [newStaff, setNewStaff] = useState({ name: '', email: '', role: 'Cardiologist' as Role, status: 'Active' as StaffStatus });
 
@@ -331,7 +325,7 @@ function DeleteStaffModal({ staffName, onDelete }: { staffName: string, onDelete
     return (
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm"><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+                <Button variant="destructive" size="icon" className="h-8 w-8"><Trash2 className="h-4 w-4" /><span className="sr-only">Delete</span></Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>

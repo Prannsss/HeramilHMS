@@ -25,7 +25,7 @@ export function UserNav() {
   const isDoctor = pathname.startsWith('/doctor');
   const { avatar } = useUserStore();
   
-  const profileLink = isDoctor ? "/doctor/profile" : "/admin/profile";
+  const profileLink = "/doctor/profile";
 
   return (
     <DropdownMenu>
@@ -47,12 +47,16 @@ export function UserNav() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href={profileLink}>Profile</Link>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        {isDoctor && (
+            <>
+                <DropdownMenuGroup>
+                    <DropdownMenuItem asChild>
+                        <Link href={profileLink}>Profile</Link>
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+            </>
+        )}
         <DropdownMenuItem asChild>
             <Link href="/">Logout</Link>
         </DropdownMenuItem>

@@ -29,7 +29,7 @@ export default function DashboardLayout({
           <SidebarHeader className="p-4">
             <Logo />
           </SidebarHeader>
-          <SidebarContent className="p-4 pt-2">
+          <SidebarContent className="p-4 pt-4">
             <DashboardNav role={role} />
           </SidebarContent>
         </div>

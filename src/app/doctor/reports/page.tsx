@@ -201,7 +201,7 @@ export default function ReportsPage() {
               </div>
             ) : (
               <Textarea
-                placeholder="Your report will be displayed here. You can also start writing your own."
+                placeholder="Write your report..."
                 value={report}
                 onChange={(e) => setReport(e.target.value)}
                 className="h-96 w-full text-sm bg-secondary"

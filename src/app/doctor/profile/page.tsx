@@ -189,11 +189,8 @@ export default function DoctorProfilePage() {
       />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Picture</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-4">
+          <Card className="h-full">
+            <CardContent className="flex h-full flex-col items-center justify-center gap-4 p-6">
               <Avatar className="h-32 w-32">
                 <AvatarImage src="https://placehold.co/128x128.png" data-ai-hint="doctor avatar" />
                 <AvatarFallback>DR</AvatarFallback>

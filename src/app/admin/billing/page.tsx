@@ -1,9 +1,9 @@
+
 'use client';
 
 import { useState } from "react";
 import { Eye, Search, Trash2, Edit, MoreHorizontal } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
-import { PageHeader } from "@/components/page-header";
 import {
   Card,
   CardContent,
@@ -188,7 +188,9 @@ export default function AdminBillingPage() {
                     </div>
                   </TableCell>
                   <TableCell>{bill.date}</TableCell>
-                  <TableCell>{bill.amount}</TableCell>
+                  <TableCell>
+                     {`$${bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2)}`}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(bill.status)} className={bill.status === 'Pending' ? 'bg-yellow-500 text-black' : ''}>
                       {bill.status}
@@ -241,6 +243,7 @@ export default function AdminBillingPage() {
 }
 
 function InvoiceModal({ bill }: { bill: Bill }) {
+  const totalAmount = bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0);
   return (
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
@@ -273,7 +276,7 @@ function InvoiceModal({ bill }: { bill: Bill }) {
         </div>
         <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2">
             <span>Total Amount</span>
-            <span>{bill.amount}</span>
+            <span>${totalAmount.toFixed(2)}</span>
         </div>
       </div>
       <DialogFooter>
@@ -282,3 +285,5 @@ function InvoiceModal({ bill }: { bill: Bill }) {
     </DialogContent>
   );
 }
+
+    

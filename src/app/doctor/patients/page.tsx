@@ -49,9 +49,32 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Mocking a logged-in doctor
 const LOGGED_IN_DOCTOR = "Dr. Evelyn Reed";
+
+const initialInventory = [
+  { id: "INV001", name: "Surgical Masks", price: 2.50 },
+  { id: "INV002", name: "Amoxicillin 500mg", price: 15.00 },
+  { id: "INV003", name: "IV Drip Bags", price: 25.00 },
+  { id: "INV006", name: "Gauze Pads", price: 5.75 },
+  { id: "INV007", name: "Syringes (10ml)", price: 1.25 },
+];
+type InventoryItem = typeof initialInventory[0];
+
+type BillItem = {
+    description: string;
+    amount: string;
+};
+
+type UsedItem = {
+    itemId: string;
+    name: string;
+    quantity: number;
+    price: number;
+};
 
 const initialPatients = [
   {
@@ -69,6 +92,11 @@ const initialPatients = [
     reasonForAdmission: "Routine Check-up",
     dateOfDischarge: null,
     prescriptions: ["Lisinopril 10mg for hypertension."],
+    usedItems: [],
+    billItems: [
+        { description: "Consultation Fee", amount: "$150.00" },
+        { description: "Medication - Lisinopril", amount: "$25.00" },
+    ],
   },
   {
     id: "PAT002",
@@ -85,6 +113,8 @@ const initialPatients = [
     reasonForAdmission: "Fractured Arm",
     dateOfDischarge: null,
     prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Consultation Fee", amount: "$150.00" }],
   },
   {
     id: "PAT003",
@@ -101,6 +131,8 @@ const initialPatients = [
     reasonForAdmission: "Minor Surgery",
     dateOfDischarge: "2023-05-20",
     prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Consultation Fee", amount: "$150.00" }],
   },
   {
     id: "PAT004",
@@ -117,6 +149,8 @@ const initialPatients = [
     reasonForAdmission: "Allergic Reaction",
     dateOfDischarge: null,
     prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Consultation Fee", amount: "$150.00" }],
   },
   {
     id: "PAT005",
@@ -133,6 +167,8 @@ const initialPatients = [
     reasonForAdmission: "Migraine Treatment",
     dateOfDischarge: null,
     prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Consultation Fee", amount: "$150.00" }],
   },
 ];
 
@@ -212,6 +248,8 @@ function PatientTable({ patients, onPatientSelect, onPrescribeSelect }: { patien
 
 function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void }) {
   if (!patient) return null;
+  
+  const totalBill = patient.billItems.reduce((acc, item) => acc + parseFloat(item.amount.replace('$', '')), 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -264,7 +302,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                     <p>{patient.reasonForAdmission}</p>
                 </div>
             </div>
-            {patient.prescriptions && patient.prescriptions.length > 0 && (
+            {(patient.prescriptions && patient.prescriptions.length > 0) && (
                 <div className="space-y-4">
                     <Separator />
                     <div>
@@ -275,6 +313,32 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                     </div>
                 </div>
             )}
+            {(patient.usedItems && patient.usedItems.length > 0) && (
+                <div className="space-y-4">
+                    <Separator />
+                    <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Used Items</h4>
+                        <ul className="mt-2 space-y-2 text-sm">
+                            {patient.usedItems.map((item, index) => (
+                                <li key={index} className="flex justify-between">
+                                    <span>{item.name} (x{item.quantity})</span>
+                                    <span>${(item.price * item.quantity).toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
+             <div className="space-y-4">
+                <Separator />
+                <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Billing Summary</h4>
+                     <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+                        <span>Total Bill</span>
+                        <span>${totalBill.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
         </div>
         <DialogFooter>
             <Button onClick={() => onOpenChange(false)}>Close</Button>
@@ -284,36 +348,105 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
   );
 }
 
-function PrescriptionModal({ patient, isOpen, onOpenChange, onSave }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onSave: (patientId: string, prescription: string) => void }) {
+function PrescriptionModal({ patient, isOpen, onOpenChange, onSave }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onSave: (patientId: string, prescription: string, usedItems: UsedItem[]) => void }) {
     const [prescription, setPrescription] = useState('');
+    const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
+
+    const handleItemCheck = (itemId: string, checked: boolean) => {
+        const newSelectedItems = { ...selectedItems };
+        if (checked) {
+            newSelectedItems[itemId] = 1;
+        } else {
+            delete newSelectedItems[itemId];
+        }
+        setSelectedItems(newSelectedItems);
+    };
+
+    const handleQuantityChange = (itemId: string, quantity: number) => {
+        setSelectedItems({
+            ...selectedItems,
+            [itemId]: Math.max(1, quantity),
+        });
+    };
 
     const handleSave = () => {
-        if (!patient || !prescription) return;
-        onSave(patient.id, prescription);
+        if (!patient) return;
+        const usedItems: UsedItem[] = Object.entries(selectedItems).map(([itemId, quantity]) => {
+            const item = initialInventory.find(i => i.id === itemId)!;
+            return {
+                itemId: item.id,
+                name: item.name,
+                price: item.price,
+                quantity,
+            };
+        });
+        
+        onSave(patient.id, prescription, usedItems);
         onOpenChange(false);
         setPrescription('');
+        setSelectedItems({});
+    };
+
+    const resetState = () => {
+        setPrescription('');
+        setSelectedItems({});
     };
     
     if (!patient) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); if (!open) setPrescription('')}}>
-            <DialogContent>
+        <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); if (!open) resetState()}}>
+            <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>New Prescription for {patient.name}</DialogTitle>
                     <DialogDescription>
-                        Enter the prescription details below.
+                        Enter prescription details and log any used inventory items.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <Label htmlFor="prescription">Prescription</Label>
-                    <Textarea
-                        id="prescription"
-                        value={prescription}
-                        onChange={(e) => setPrescription(e.target.value)}
-                        placeholder="e.g., Amoxicillin 500mg, 1 tablet every 8 hours for 7 days."
-                        className="min-h-[120px]"
-                    />
+                    <div>
+                        <Label htmlFor="prescription">Prescription</Label>
+                        <Textarea
+                            id="prescription"
+                            value={prescription}
+                            onChange={(e) => setPrescription(e.target.value)}
+                            placeholder="e.g., Amoxicillin 500mg, 1 tablet every 8 hours for 7 days."
+                            className="min-h-[100px] mt-2"
+                        />
+                    </div>
+                    <Separator />
+                     <div>
+                        <Label>Used Inventory Items</Label>
+                        <ScrollArea className="h-40 mt-2 rounded-md border p-2">
+                           <div className="space-y-2">
+                                {initialInventory.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id={`item-${item.id}`}
+                                                checked={!!selectedItems[item.id]}
+                                                onCheckedChange={(checked) => handleItemCheck(item.id, !!checked)}
+                                            />
+                                            <label htmlFor={`item-${item.id}`}>{item.name}</label>
+                                        </div>
+                                        {selectedItems[item.id] && (
+                                            <div className="flex items-center gap-2">
+                                                <Label htmlFor={`qty-${item.id}`} className="text-xs">Qty:</Label>
+                                                <Input
+                                                    id={`qty-${item.id}`}
+                                                    type="number"
+                                                    min="1"
+                                                    value={selectedItems[item.id]}
+                                                    onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                                                    className="h-7 w-16"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -341,13 +474,21 @@ export default function DoctorPatientsPage() {
     setIsPrescribeModalOpen(true);
   }
 
-  const handleSavePrescription = (patientId: string, prescription: string) => {
+  const handleSavePrescription = (patientId: string, prescription: string, usedItems: UsedItem[]) => {
     setPatients(currentPatients => currentPatients.map(p => {
         if (p.id === patientId) {
-            return {
+            const newBillItems = usedItems.map(item => ({
+                description: `Used Item: ${item.name} (x${item.quantity})`,
+                amount: `$${(item.quantity * item.price).toFixed(2)}`
+            }));
+
+            const updatedPatient = {
                 ...p,
-                prescriptions: [...p.prescriptions, prescription]
+                prescriptions: prescription ? [...p.prescriptions, prescription] : p.prescriptions,
+                usedItems: [...p.usedItems, ...usedItems],
+                billItems: [...p.billItems, ...newBillItems],
             };
+            return updatedPatient;
         }
         return p;
     }));
@@ -406,3 +547,5 @@ export default function DoctorPatientsPage() {
     </DashboardLayout>
   );
 }
+
+    

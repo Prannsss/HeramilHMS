@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from "react";
-import { PlusCircle, Search } from "lucide-react";
+import { useState, useMemo } from "react";
+import { PlusCircle, Search, Check, ChevronsUpDown } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -35,7 +35,21 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+
 
 const initialInventory = [
   {
@@ -86,6 +100,7 @@ const getStatus = (stock: number, maxStock: number): { text: string; variant: "s
 
 export default function AdminInventoryPage() {
   const [inventory, setInventory] = useState(initialInventory);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleAddItem = (newItemData: Omit<InventoryItem, 'id'>) => {
     const newItem: InventoryItem = {
@@ -104,6 +119,9 @@ export default function AdminInventoryPage() {
         return item;
     }));
   };
+  
+  const filteredInventory = inventory.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const categories = useMemo(() => [...new Set(inventory.map(item => item.category))], [inventory]);
 
   return (
     <DashboardLayout role="admin">
@@ -120,9 +138,9 @@ export default function AdminInventoryPage() {
           <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search inventory..." className="pl-8" />
+                <Input placeholder="Search inventory..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <AddItemModal onAddItem={handleAddItem}>
+            <AddItemModal onAddItem={handleAddItem} categories={categories}>
                 <Button className="ml-auto">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Item
@@ -143,7 +161,7 @@ export default function AdminInventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventory.map((item) => {
+              {filteredInventory.map((item) => {
                 const status = getStatus(item.stock, item.maxStock);
                 return (
                   <TableRow key={item.id}>
@@ -179,7 +197,7 @@ export default function AdminInventoryPage() {
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
-                Showing <strong>1-{inventory.length}</strong> of <strong>{inventory.length}</strong> items
+                Showing <strong>1-{filteredInventory.length}</strong> of <strong>{filteredInventory.length}</strong> items
             </div>
         </CardFooter>
       </Card>
@@ -187,54 +205,138 @@ export default function AdminInventoryPage() {
   );
 }
 
-function AddItemModal({ children, onAddItem }: { children: React.ReactNode, onAddItem: (item: Omit<InventoryItem, 'id'>) => void }) {
+function AddItemModal({ children, onAddItem, categories }: { children: React.ReactNode, onAddItem: (item: Omit<InventoryItem, 'id'>) => void, categories: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', category: '', stock: 0, maxStock: 100 });
 
-  const handleSubmit = () => {
+  const handleSave = () => {
     onAddItem(newItem);
     setIsOpen(false);
+    setIsConfirmOpen(false);
     setNewItem({ name: '', category: '', stock: 0, maxStock: 100 });
+  }
+
+  const handleSubmit = () => {
+    const isNewCategory = !categories.find(c => c.toLowerCase() === newItem.category.toLowerCase());
+    if (isNewCategory && newItem.category) {
+        setIsConfirmOpen(true);
+    } else {
+        handleSave();
+    }
   };
   
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Inventory Item</DialogTitle>
-          <DialogDescription>
-            Fill in the details for the new item.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">Name</Label>
-            <Input id="name" value={newItem.name} onChange={(e) => setNewItem({...newItem, name: e.target.value})} className="col-span-3" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="category" className="text-right">Category</Label>
-            <Input id="category" value={newItem.category} onChange={(e) => setNewItem({...newItem, category: e.target.value})} className="col-span-3" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="stock" className="text-right">Initial Stock</Label>
-            <Input id="stock" type="number" value={newItem.stock} onChange={(e) => setNewItem({...newItem, stock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="maxStock" className="text-right">Max Stock</Label>
-            <Input id="maxStock" type="number" value={newItem.maxStock} onChange={(e) => setNewItem({...newItem, maxStock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
-          </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button onClick={handleSubmit}>Save Item</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent>
+            <DialogHeader>
+            <DialogTitle>Add New Inventory Item</DialogTitle>
+            <DialogDescription>
+                Fill in the details for the new item.
+            </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">Name</Label>
+                <Input id="name" value={newItem.name} onChange={(e) => setNewItem({...newItem, name: e.target.value})} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="category" className="text-right">Category</Label>
+                <CategoryCombobox 
+                    categories={categories}
+                    value={newItem.category}
+                    onChange={(value) => setNewItem({...newItem, category: value})}
+                />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="stock" className="text-right">Initial Stock</Label>
+                <Input id="stock" type="number" value={newItem.stock} onChange={(e) => setNewItem({...newItem, stock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="maxStock" className="text-right">Max Stock</Label>
+                <Input id="maxStock" type="number" value={newItem.maxStock} onChange={(e) => setNewItem({...newItem, maxStock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
+            </div>
+            </div>
+            <DialogFooter>
+            <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleSubmit}>Save Item</Button>
+            </DialogFooter>
+        </DialogContent>
+        </Dialog>
+        <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Add New Category?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The category "{newItem.category}" does not exist. Do you want to add it as a new category?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSave}>Yes, Add Category</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </>
   );
 }
+
+
+function CategoryCombobox({ categories, value, onChange }: { categories: string[], value: string, onChange: (value: string) => void }) {
+    const [open, setOpen] = useState(false);
+  
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="col-span-3 justify-between"
+          >
+            {value ? value : "Select or type category..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px] p-0">
+          <Command>
+            <CommandInput 
+                placeholder="Search or create category..." 
+                value={value}
+                onValueChange={onChange}
+            />
+            <CommandList>
+                <CommandEmpty>No category found. Type to create.</CommandEmpty>
+                <CommandGroup>
+                {categories.map((category) => (
+                    <CommandItem
+                        key={category}
+                        value={category}
+                        onSelect={(currentValue) => {
+                            onChange(currentValue === value ? "" : currentValue);
+                            setOpen(false);
+                        }}
+                    >
+                    <Check
+                        className={cn(
+                        "mr-2 h-4 w-4",
+                        value === category ? "opacity-100" : "opacity-0"
+                        )}
+                    />
+                    {category}
+                    </CommandItem>
+                ))}
+                </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  }
 
 
 function AddStockModal({ children, item, onAddStock }: { children: React.ReactNode, item: InventoryItem, onAddStock: (itemId: string, quantity: number) => void }) {
@@ -283,6 +385,3 @@ function AddStockModal({ children, item, onAddStock }: { children: React.ReactNo
         </Dialog>
     );
 }
-
-
-    

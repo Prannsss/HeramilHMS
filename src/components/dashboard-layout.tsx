@@ -25,11 +25,11 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarRail />
-        <div className="flex h-full flex-col p-4">
-          <SidebarHeader>
+        <div className="flex h-full flex-col">
+          <SidebarHeader className="p-4">
             <Logo />
           </SidebarHeader>
-          <SidebarContent className="p-0">
+          <SidebarContent className="p-4 pt-2">
             <DashboardNav role={role} />
           </SidebarContent>
         </div>

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -24,11 +23,8 @@ export default function LoginPage() {
           <p className="mt-2 text-muted-foreground">Welcome back! Please enter your credentials.</p>
         </header>
         <Card>
-          <CardHeader>
+          <CardHeader className="text-center">
             <CardTitle className="text-2xl">Login</CardTitle>
-            <CardDescription>
-              Select your role to access your dashboard.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
@@ -42,14 +38,16 @@ export default function LoginPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required />
-                 <Link
+                <div className="flex items-center">
+                  <Label htmlFor="password">Password</Label>
+                   <Link
                     href="#"
                     className="ml-auto inline-block text-sm underline"
                   >
                     Forgot your password?
                   </Link>
+                </div>
+                <Input id="password" type="password" required />
               </div>
               <Button type="submit" className="w-full">
                 Login

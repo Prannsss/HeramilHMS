@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogOut } from "lucide-react";
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -12,9 +13,10 @@ import { cn } from "@/lib/utils";
 
 interface DashboardNavProps {
   role: "admin" | "doctor";
+  isLogout?: boolean;
 }
 
-export function DashboardNav({ role }: DashboardNavProps) {
+export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
   const pathname = usePathname();
 
   const adminNavItems = [
@@ -35,6 +37,27 @@ export function DashboardNav({ role }: DashboardNavProps) {
   ];
 
   const navItems = role === "admin" ? adminNavItems : doctorNavItems;
+
+  if (isLogout) {
+    return (
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    asChild
+                    size="lg"
+                    className={cn(
+                        "w-full justify-start text-lg bg-destructive text-destructive-foreground hover:bg-red-700 hover:text-destructive-foreground"
+                    )}
+                >
+                    <Link href="/">
+                        <LogOut className="mr-2 h-5 w-5" />
+                        Logout
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
+    )
+  }
 
   return (
     <SidebarMenu>

@@ -7,10 +7,13 @@ import {
   SidebarTrigger,
   SidebarInset,
   SidebarRail,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import Logo from "@/components/logo";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { UserNav } from "@/components/user-nav";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import Link from "next/link";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -29,9 +32,12 @@ export default function DashboardLayout({
           <SidebarHeader className="items-center p-4">
             <Logo />
           </SidebarHeader>
-          <SidebarContent className="p-4 pt-4">
+          <SidebarContent className="flex-1 p-4 pt-4">
             <DashboardNav role={role} />
           </SidebarContent>
+          <SidebarFooter className="p-4">
+             <DashboardNav role={role} isLogout />
+          </SidebarFooter>
         </div>
       </Sidebar>
       <SidebarInset>

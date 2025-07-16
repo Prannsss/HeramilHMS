@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from "react";
 import { PlusCircle, Search } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
@@ -71,6 +74,13 @@ const patients = [
 ];
 
 export default function AdminPatientsPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredPatients = patients.filter(patient =>
+    patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <DashboardLayout role="admin">
       <PageHeader title="Patients" description="Manage patient records." />
@@ -83,7 +93,12 @@ export default function AdminPatientsPage() {
           <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search patients..." className="pl-8" />
+                <Input
+                  placeholder="Search patients by name or email..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
             </div>
             <Button className="ml-auto">
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -103,7 +118,7 @@ export default function AdminPatientsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {patients.map((patient) => (
+              {filteredPatients.map((patient) => (
                 <TableRow key={patient.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -134,7 +149,7 @@ export default function AdminPatientsPage() {
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
-                Showing <strong>1-5</strong> of <strong>{patients.length}</strong> patients
+                Showing <strong>1-{filteredPatients.length}</strong> of <strong>{patients.length}</strong> patients
             </div>
         </CardFooter>
       </Card>

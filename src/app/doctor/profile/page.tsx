@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,10 +12,10 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription
 } from '@/components/ui/card';
 import {
   Dialog,
@@ -159,6 +159,8 @@ function ChangePasswordModal() {
 export default function DoctorProfilePage() {
   const { toast } = useToast();
   const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -181,6 +183,21 @@ export default function DoctorProfilePage() {
     }, 1500);
   }
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <DashboardLayout role="doctor">
       <PageHeader
@@ -193,13 +210,20 @@ export default function DoctorProfilePage() {
             <CardContent className="flex h-full flex-col items-center justify-center gap-4 p-6">
               <div className="relative">
                 <Avatar className="h-32 w-32">
-                  <AvatarImage src="https://placehold.co/128x128.png" data-ai-hint="doctor avatar" />
+                  <AvatarImage src={avatarPreview || "https://placehold.co/128x128.png"} data-ai-hint="doctor avatar" />
                   <AvatarFallback>DR</AvatarFallback>
                 </Avatar>
-                <Button size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8">
+                <Button size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8" onClick={handleAvatarClick}>
                   <Pen className="h-4 w-4" />
                   <span className="sr-only">Edit Profile Picture</span>
                 </Button>
+                <Input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept="image/*"
+                />
               </div>
             </CardContent>
           </Card>

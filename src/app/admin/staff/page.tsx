@@ -61,6 +61,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 type StaffStatus = "Active" | "On Leave" | "Retired";
 type Role = "Cardiologist" | "Pediatrician" | "Radiologist" | "Registered Nurse" | "Administrator";
@@ -125,8 +127,91 @@ const initialStaff: StaffMember[] = [
   },
 ];
 
+function StaffTable({
+  staff,
+  onStatusChange,
+  onDelete
+}: {
+  staff: StaffMember[],
+  onStatusChange: (staffId: string, newStatus: StaffStatus) => void,
+  onDelete: (staffId: string) => void
+}) {
+    const getStatusBadge = (status: StaffStatus) => {
+    switch (status) {
+        case "Active": return "secondary";
+        case "On Leave": return "default";
+        case "Retired": return "destructive";
+        default: return "outline";
+    }
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Staff Member</TableHead>
+          <TableHead>Staff ID</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Department</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {staff.map((member) => (
+          <TableRow key={member.id}>
+            <TableCell>
+              <div>
+                <div className="font-medium">{member.name}</div>
+                <div className="text-sm text-muted-foreground">{member.email}</div>
+              </div>
+            </TableCell>
+            <TableCell>{member.id}</TableCell>
+            <TableCell>{member.role}</TableCell>
+            <TableCell>{member.department}</TableCell>
+            <TableCell>
+              <Badge variant={getStatusBadge(member.status)} className={member.status === "On Leave" ? "bg-yellow-500 text-black" : ""}>
+                {member.status}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              {member.status === 'Retired' ? (
+                  <div className="flex justify-end items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => onStatusChange(member.id, 'Active')} className="h-8 w-8">
+                          <Undo2 className="h-4 w-4" />
+                          <span className="sr-only">Undo</span>
+                      </Button>
+                      <DeleteStaffModal staffName={member.name} onDelete={() => onDelete(member.id)} />
+                  </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => onStatusChange(member.id, 'Active')}>Mark as Active</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onStatusChange(member.id, 'On Leave')}>Mark as On Leave</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={() => onStatusChange(member.id, 'Retired')}>Mark as Retired</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+
 export default function AdminStaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>(initialStaff);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleAddStaff = (newStaffMember: Omit<StaffMember, "id">) => {
     const newMember: StaffMember = {
@@ -143,19 +228,15 @@ export default function AdminStaffPage() {
   const handleDelete = (staffId: string) => {
     setStaff(staff.filter(member => member.id !== staffId));
   };
+  
+  const filteredStaff = staff.filter(member => member.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const getStatusBadge = (status: StaffStatus) => {
-    switch (status) {
-        case "Active": return "secondary";
-        case "On Leave": return "default";
-        case "Retired": return "destructive";
-        default: return "outline";
-    }
-  }
+  const activeStaff = filteredStaff.filter(s => s.status === 'Active');
+  const onLeaveStaff = filteredStaff.filter(s => s.status === 'On Leave');
+  const retiredStaff = filteredStaff.filter(s => s.status === 'Retired');
 
   return (
     <DashboardLayout role="admin">
-      
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Staff Members</CardTitle>
@@ -163,7 +244,7 @@ export default function AdminStaffPage() {
           <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search staff..." className="pl-8" />
+              <Input placeholder="Search staff..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <AddStaffModal onAddStaff={handleAddStaff}>
               <Button className="ml-auto">
@@ -174,69 +255,26 @@ export default function AdminStaffPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Staff Member</TableHead>
-                <TableHead>Staff ID</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {staff.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{member.name}</div>
-                      <div className="text-sm text-muted-foreground">{member.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{member.id}</TableCell>
-                  <TableCell>{member.role}</TableCell>
-                  <TableCell>{member.department}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadge(member.status)} className={member.status === "On Leave" ? "bg-yellow-500 text-black" : ""}>
-                      {member.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {member.status === 'Retired' ? (
-                        <div className="flex justify-end items-center gap-2">
-                           <Button variant="ghost" size="icon" onClick={() => handleStatusChange(member.id, 'Active')} className="h-8 w-8">
-                                <Undo2 className="h-4 w-4" />
-                                <span className="sr-only">Undo</span>
-                            </Button>
-                           <DeleteStaffModal staffName={member.name} onDelete={() => handleDelete(member.id)} />
-                       </div>
-                    ) : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleStatusChange(member.id, 'Active')}>Mark as Active</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(member.id, 'On Leave')}>Mark as On Leave</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => handleStatusChange(member.id, 'Retired')}>Mark as Retired</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Tabs defaultValue="active">
+            <TabsList>
+              <TabsTrigger value="active">Active ({activeStaff.length})</TabsTrigger>
+              <TabsTrigger value="on-leave">On Leave ({onLeaveStaff.length})</TabsTrigger>
+              <TabsTrigger value="retired">Retired ({retiredStaff.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="active">
+              <StaffTable staff={activeStaff} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+            </TabsContent>
+            <TabsContent value="on-leave">
+              <StaffTable staff={onLeaveStaff} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+            </TabsContent>
+            <TabsContent value="retired">
+              <StaffTable staff={retiredStaff} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+            </TabsContent>
+          </Tabs>
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-{staff.length}</strong> of <strong>{staff.length}</strong> staff members
+            Showing <strong>1-{filteredStaff.length}</strong> of <strong>{staff.length}</strong> staff members
           </div>
         </CardFooter>
       </Card>

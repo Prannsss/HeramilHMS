@@ -175,7 +175,6 @@ function MedicalRecordModal({ record }: { record: MedicalRecord }) {
         </div>
       </div>
       <DialogFooter>
-        <Button>Close</Button>
       </DialogFooter>
     </DialogContent>
   );

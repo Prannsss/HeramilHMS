@@ -3,15 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  FileText,
-  CalendarClock,
-  User,
-  Warehouse,
-  BrainCircuit,
-  Users
-} from "lucide-react";
-import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -26,18 +17,18 @@ export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
 
   const adminNavItems = [
-    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/reports", label: "Reports", icon: FileText },
-    { href: "/admin/schedule-adjustment", label: "Schedule AI", icon: CalendarClock },
-    { href: "/admin/patients", label: "Patients", icon: User },
-    { href: "/admin/staff", label: "Staff", icon: Users },
-    { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
+    { href: "/admin/dashboard", label: "Dashboard" },
+    { href: "/admin/reports", label: "Reports" },
+    { href: "/admin/schedule-adjustment", label: "Schedule AI" },
+    { href: "/admin/patients", label: "Patients" },
+    { href: "/admin/staff", label: "Staff" },
+    { href: "/admin/inventory", label: "Inventory" },
   ];
 
   const doctorNavItems = [
-    { href: "/doctor/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/doctor/ai-diagnosis", label: "AI Diagnosis", icon: BrainCircuit },
-    { href: "/doctor/patients", label: "Patients", icon: User },
+    { href: "/doctor/dashboard", label: "Dashboard" },
+    { href: "/doctor/ai-diagnosis", label: "AI Diagnosis" },
+    { href: "/doctor/patients", label: "Patients" },
   ];
 
   const navItems = role === "admin" ? adminNavItems : doctorNavItems;
@@ -46,19 +37,19 @@ export function DashboardNav({ role }: DashboardNavProps) {
     <SidebarMenu>
       {navItems.map((item) => (
         <SidebarMenuItem key={item.href}>
-          <Link href={item.href} passHref legacyBehavior>
-             <SidebarMenuButton
-              as="a"
-              isActive={pathname === item.href}
-              className={cn(
-                "w-full justify-start",
-                pathname === item.href && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
-                "hover:bg-primary/90 hover:text-primary-foreground"
-              )}
-            >
+          <SidebarMenuButton
+            asChild
+            isActive={pathname === item.href}
+            className={cn(
+              "w-full justify-start",
+              pathname === item.href && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
+              "hover:bg-primary/90 hover:text-primary-foreground"
+            )}
+          >
+            <Link href={item.href}>
               {item.label}
-            </SidebarMenuButton>
-          </Link>
+            </Link>
+          </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>

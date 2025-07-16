@@ -29,15 +29,15 @@ export function DashboardNav({ role }: DashboardNavProps) {
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/reports", label: "Reports", icon: FileText },
     { href: "/admin/schedule-adjustment", label: "Schedule AI", icon: CalendarClock },
-    { href: "#", label: "Patients", icon: User },
-    { href: "#", label: "Staff", icon: Users },
-    { href: "#", label: "Inventory", icon: Warehouse },
+    { href: "/admin/patients", label: "Patients", icon: User },
+    { href: "/admin/staff", label: "Staff", icon: Users },
+    { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   ];
 
   const doctorNavItems = [
     { href: "/doctor/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/doctor/ai-diagnosis", label: "AI Diagnosis", icon: BrainCircuit },
-    { href: "#", label: "Patients", icon: User },
+    { href: "/doctor/patients", label: "Patients", icon: User },
   ];
 
   const navItems = role === "admin" ? adminNavItems : doctorNavItems;
@@ -51,7 +51,8 @@ export function DashboardNav({ role }: DashboardNavProps) {
               isActive={pathname === item.href}
               className={cn(
                 "w-full justify-start",
-                pathname === item.href && "bg-primary/10 text-primary"
+                pathname === item.href && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
+                "hover:bg-primary/90 hover:text-primary-foreground"
               )}
               asChild
             >

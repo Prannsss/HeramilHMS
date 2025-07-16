@@ -3,7 +3,7 @@
 /**
  * @fileOverview AI-powered diagnosis support flow.
  *
- * - aiDiagnosisSupport - A function that accepts patient symptoms and returns potential diagnoses.
+ * - aiDiagnosisSupport - A function that accepts patient symptoms and returns a potential diagnosis.
  * - AiDiagnosisSupportInput - The input type for the aiDiagnosisSupport function.
  * - AiDiagnosisSupportOutput - The return type for the aiDiagnosisSupport function.
  */
@@ -14,13 +14,12 @@ import {z} from 'genkit';
 const AiDiagnosisSupportInputSchema = z.object({
   symptoms: z
     .string()
-    .describe('A description of the patient symptoms.'),
+    .describe('A description of the patient symptoms or reason for admission.'),
 });
 export type AiDiagnosisSupportInput = z.infer<typeof AiDiagnosisSupportInputSchema>;
 
 const AiDiagnosisSupportOutputSchema = z.object({
-  diagnosisSuggestions: z.array(z.string()).describe('A list of potential diagnoses based on the symptoms.'),
-  confidenceLevels: z.array(z.number()).describe('A list of probabilities associated with each potential diagnosis.'),
+  diagnosis: z.string().describe('A detailed diagnosis based on the provided symptoms.'),
 });
 export type AiDiagnosisSupportOutput = z.infer<typeof AiDiagnosisSupportOutputSchema>;
 
@@ -34,7 +33,7 @@ const prompt = ai.definePrompt({
   output: {schema: AiDiagnosisSupportOutputSchema},
   prompt: `You are an AI-powered medical diagnosis assistant.
 
-You will receive a description of the patient's symptoms and return a list of potential diagnoses, sorted by likelihood, along with their probabilities.
+You will receive a description of the patient's symptoms or reason for admission and return a detailed diagnosis.
 
 Symptoms: {{{symptoms}}}`,
 });

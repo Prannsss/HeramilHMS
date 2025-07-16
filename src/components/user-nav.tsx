@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -17,10 +18,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useUserStore } from "@/hooks/use-user-store"
 
 export function UserNav() {
   const pathname = usePathname();
   const isDoctor = pathname.startsWith('/doctor');
+  const { avatar } = useUserStore();
   
   const profileLink = isDoctor ? "/doctor/profile" : "/admin/profile";
 
@@ -29,7 +32,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full mt-2">
           <Avatar className="h-10 w-10">
-            <AvatarImage src="https://placehold.co/100x100.png" alt="@user" data-ai-hint="user avatar" />
+            <AvatarImage src={avatar || "https://placehold.co/100x100.png"} alt="@user" data-ai-hint="user avatar" />
             <AvatarFallback></AvatarFallback>
           </Avatar>
         </Button>

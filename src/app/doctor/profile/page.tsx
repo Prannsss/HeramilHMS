@@ -1,11 +1,14 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Pen } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import type { Point, Area } from 'react-easy-crop';
+
 import DashboardLayout from '@/components/dashboard-layout';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -38,7 +41,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
+import { getCroppedImg } from '@/lib/cropImage';
+import { useUserStore } from '@/hooks/use-user-store';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -57,7 +62,6 @@ const passwordFormSchema = z
     path: ['confirmPassword'],
   });
 
-
 function ChangePasswordModal() {
     const { toast } = useToast();
     const [isPasswordLoading, setIsPasswordLoading] = useState(false);
@@ -66,23 +70,23 @@ function ChangePasswordModal() {
     const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
         resolver: zodResolver(passwordFormSchema),
         defaultValues: {
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
         },
     });
 
     function onPasswordSubmit(values: z.infer<typeof passwordFormSchema>) {
         setIsPasswordLoading(true);
         setTimeout(() => {
-        console.log(values);
-        toast({
-            title: 'Password Changed',
-            description: 'Your password has been successfully changed.',
-        });
-        passwordForm.reset();
-        setIsPasswordLoading(false);
-        setIsOpen(false);
+            console.log(values);
+            toast({
+                title: 'Password Changed',
+                description: 'Your password has been successfully changed.',
+            });
+            passwordForm.reset();
+            setIsPasswordLoading(false);
+            setIsOpen(false);
         }, 1500);
     }
 
@@ -157,152 +161,232 @@ function ChangePasswordModal() {
     )
 }
 
+function ImageCropper({ image, onCropComplete, onCancel }: { image: string, onCropComplete: (croppedImage: string) => void, onCancel: () => void }) {
+    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+
+    const onCropCompleteCallback = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
+    const handleSave = async () => {
+        if (croppedAreaPixels) {
+            try {
+                const croppedImage = await getCroppedImg(image, croppedAreaPixels);
+                onCropComplete(croppedImage);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    };
+
+    return (
+        <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Crop your new profile picture</DialogTitle>
+                    <DialogDescription>
+                        Adjust the image below to get the perfect crop.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="relative h-64 w-full bg-secondary">
+                    <Cropper
+                        image={image}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1}
+                        onCropChange={setCrop}
+                        onCropComplete={onCropCompleteCallback}
+                        onZoomChange={setZoom}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Zoom</Label>
+                    <Slider
+                        value={[zoom]}
+                        min={1}
+                        max={3}
+                        step={0.1}
+                        onValueChange={(value) => setZoom(value[0])}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onCancel}>Cancel</Button>
+                    <Button onClick={handleSave}>Save</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function DoctorProfilePage() {
-  const { toast } = useToast();
-  const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+    const [isProfileLoading, setIsProfileLoading] = useState(false);
+    const { avatar, setAvatar } = useUserStore();
+    const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
-    resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      name: 'Dr. Evelyn Reed',
-      email: 'e.reed@email.com',
-      specialization: 'Cardiologist',
-    },
-  });
+    const profileForm = useForm<z.infer<typeof profileFormSchema>>({
+        resolver: zodResolver(profileFormSchema),
+        defaultValues: {
+            name: 'Dr. Evelyn Reed',
+            email: 'e.reed@email.com',
+            specialization: 'Cardiologist',
+        },
+    });
 
-  function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
-    setIsProfileLoading(true);
-    setTimeout(() => {
-      console.log(values);
-      toast({
-        title: 'Profile Updated',
-        description: 'Your profile information has been successfully updated.',
-      });
-      setIsProfileLoading(false);
-    }, 1500);
-  }
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
+        setIsProfileLoading(true);
+        setTimeout(() => {
+            console.log(values);
+            toast({
+                title: 'Profile Updated',
+                description: 'Your profile information has been successfully updated.',
+            });
+            setIsProfileLoading(false);
+        }, 1500);
     }
-  };
 
-  return (
-    <DashboardLayout role="doctor">
-      <PageHeader
-        title="Your Profile"
-        description="Manage your account details and settings."
-      />
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <Card className="h-full overflow-hidden">
-            <CardContent className="p-0 h-full">
-              <div className="relative h-full w-full">
-                <Avatar className="h-full w-full rounded-none">
-                  <AvatarImage
-                    src={avatarPreview || "https://placehold.co/400x400.png"}
-                    data-ai-hint="doctor avatar"
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="rounded-none">DR</AvatarFallback>
-                </Avatar>
-                <Button
-                  size="icon"
-                  className="absolute bottom-2 right-2 rounded-full h-10 w-10"
-                  onClick={handleAvatarClick}
-                >
-                  <Pen className="h-5 w-5" />
-                  <span className="sr-only">Edit Profile Picture</span>
-                </Button>
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  className="hidden"
-                  accept="image/*"
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImageToCrop(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+        // Reset file input to allow re-uploading the same file
+        if(event.target) {
+            event.target.value = "";
+        }
+    };
+    
+    const handleCropComplete = (croppedImage: string) => {
+        setAvatar(croppedImage);
+        setImageToCrop(null);
+        toast({
+            title: "Profile Picture Updated",
+            description: "Your new profile picture has been saved.",
+        });
+    };
+
+    return (
+        <DashboardLayout role="doctor">
+            <PageHeader
+                title="Your Profile"
+                description="Manage your account details and settings."
+            />
+             {imageToCrop && (
+                <ImageCropper
+                    image={imageToCrop}
+                    onCropComplete={handleCropComplete}
+                    onCancel={() => setImageToCrop(null)}
                 />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-1">
+                    <Card className="h-full overflow-hidden">
+                        <CardContent className="p-0 h-full">
+                            <div className="relative h-full w-full">
+                                <Avatar className="h-full w-full rounded-none">
+                                    <AvatarImage
+                                        src={avatar || "https://placehold.co/400x400.png"}
+                                        data-ai-hint="doctor avatar"
+                                        className="object-cover"
+                                    />
+                                    <AvatarFallback className="rounded-none">DR</AvatarFallback>
+                                </Avatar>
+                                <Button
+                                    size="icon"
+                                    className="absolute bottom-2 right-2 rounded-full h-10 w-10"
+                                    onClick={handleAvatarClick}
+                                >
+                                    <Pen className="h-5 w-5" />
+                                    <span className="sr-only">Edit Profile Picture</span>
+                                </Button>
+                                <Input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    accept="image/*"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-        <div className="lg:col-span-2 space-y-8">
-          <Card>
-            <Form {...profileForm}>
-              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
-                <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription>
-                    Update your name, email, and specialization.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={profileForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={profileForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={profileForm.control}
-                    name="specialization"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Specialization</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button type="submit" disabled={isProfileLoading}>
-                    {isProfileLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Save Changes
-                  </Button>
-                  <ChangePasswordModal />
-                </CardFooter>
-              </form>
-            </Form>
-          </Card>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+                <div className="lg:col-span-2 space-y-8">
+                    <Card>
+                        <Form {...profileForm}>
+                            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
+                                <CardHeader>
+                                    <CardTitle>Personal Information</CardTitle>
+                                    <CardDescription>
+                                        Update your name, email, and specialization.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <FormField
+                                        control={profileForm.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Full Name</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={profileForm.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email Address</FormLabel>
+                                                <FormControl>
+                                                    <Input type="email" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={profileForm.control}
+                                        name="specialization"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Specialization</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+                                <CardFooter className="flex justify-between">
+                                    <Button type="submit" disabled={isProfileLoading}>
+                                        {isProfileLoading && (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        )}
+                                        Save Changes
+                                    </Button>
+                                    <ChangePasswordModal />
+                                </CardFooter>
+                            </form>
+                        </Form>
+                    </Card>
+                </div>
+            </div>
+        </DashboardLayout>
+    );
 }

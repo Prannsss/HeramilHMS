@@ -92,9 +92,11 @@ const initialAppointments: Appointment[] = [
 function AppointmentTable({
   appointments,
   onStatusChange,
+  onFinalize,
 }: {
   appointments: Appointment[];
   onStatusChange: (id: string, status: AppointmentStatus) => void;
+  onFinalize: (id: string) => void;
 }) {
   return (
     <Table>
@@ -156,15 +158,26 @@ function AppointmentTable({
                   </Button>
                 </div>
               ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onStatusChange(appt.id, 'Upcoming')}
-                >
-                  <Undo2 className="h-4 w-4" />
-                  <span className="sr-only">Undo</span>
-                </Button>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onStatusChange(appt.id, 'Upcoming')}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    <span className="sr-only">Undo</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700"
+                    onClick={() => onFinalize(appt.id)}
+                  >
+                    <Check className="h-4 w-4" />
+                    <span className="sr-only">Finalize</span>
+                  </Button>
+                </div>
               )}
             </TableCell>
           </TableRow>
@@ -185,6 +198,10 @@ export default function DoctorAppointmentsPage() {
       )
     );
   };
+  
+  const handleFinalize = (id: string) => {
+    setAppointments(appointments.filter(appt => appt.id !== id));
+  }
 
   const upcomingAppointments = appointments.filter(
     (a) => a.status === 'Upcoming'
@@ -217,12 +234,14 @@ export default function DoctorAppointmentsPage() {
               <AppointmentTable
                 appointments={upcomingAppointments}
                 onStatusChange={handleStatusChange}
+                onFinalize={handleFinalize}
               />
             </TabsContent>
             <TabsContent value="done">
               <AppointmentTable
                 appointments={doneAppointments}
                 onStatusChange={handleStatusChange}
+                onFinalize={handleFinalize}
               />
             </TabsContent>
           </Tabs>

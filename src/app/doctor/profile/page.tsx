@@ -195,7 +195,6 @@ export default function DoctorProfilePage() {
                 <AvatarImage src="https://placehold.co/128x128.png" data-ai-hint="doctor avatar" />
                 <AvatarFallback>DR</AvatarFallback>
               </Avatar>
-              <Input type="file" className="text-sm" />
               <Button className="w-full">Upload Picture</Button>
             </CardContent>
           </Card>

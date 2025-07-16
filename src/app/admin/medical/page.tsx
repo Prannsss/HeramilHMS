@@ -44,7 +44,7 @@ import {
 const medicalRecords = [
   {
     id: 'REC001',
-    patient: { name: 'Amelia Johnson', avatar: 'https://placehold.co/32x32.png' },
+    patient: { name: 'Amelia Johnson' },
     doctor: 'Dr. Evelyn Reed',
     date: '2023-06-15',
     type: 'Prescription',
@@ -60,7 +60,7 @@ const medicalRecords = [
   },
   {
     id: 'REC002',
-    patient: { name: 'Benjamin Carter', avatar: 'https://placehold.co/32x32.png' },
+    patient: { name: 'Benjamin Carter' },
     doctor: 'Dr. Kenji Tanaka',
     date: '2023-06-18',
     type: 'Test Result',
@@ -73,7 +73,7 @@ const medicalRecords = [
   },
   {
     id: 'REC003',
-    patient: { name: 'Charlotte Davis', avatar: 'https://placehold.co/32x32.png' },
+    patient: { name: 'Charlotte Davis' },
     doctor: 'Dr. Mark O\'Connell',
     date: '2023-06-20',
     type: 'Diagnosis',
@@ -86,7 +86,7 @@ const medicalRecords = [
   },
   {
     id: 'REC004',
-    patient: { name: 'Daniel Evans', avatar: 'https://placehold.co/32x32.png' },
+    patient: { name: 'Daniel Evans' },
     doctor: 'Dr. Evelyn Reed',
     date: '2023-06-22',
     type: 'Prescription',
@@ -102,7 +102,7 @@ const medicalRecords = [
   },
   {
     id: 'REC005',
-    patient: { name: 'Evelyn Foster', avatar: 'https://placehold.co/32x32.png' },
+    patient: { name: 'Evelyn Foster' },
     doctor: 'Dr. Kenji Tanaka',
     date: '2023-06-25',
     type: 'Test Result',
@@ -278,7 +278,6 @@ ${record.details}
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={record.patient.avatar} alt={record.patient.name} data-ai-hint="patient avatar" />
                         <AvatarFallback>{record.patient.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <span>{record.patient.name}</span>

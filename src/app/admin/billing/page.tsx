@@ -48,7 +48,6 @@ const initialBills = [
     patient: {
       name: "Amelia Johnson",
       email: "amelia.j@email.com",
-      avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-15",
     status: "Paid",
@@ -62,7 +61,6 @@ const initialBills = [
     patient: {
       name: "Benjamin Carter",
       email: "ben.c@email.com",
-      avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-18",
     status: "Unpaid",
@@ -73,7 +71,6 @@ const initialBills = [
     patient: {
       name: "Evelyn Foster",
       email: "evelyn.f@email.com",
-      avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-20",
     status: "Paid",
@@ -87,7 +84,6 @@ const initialBills = [
     patient: {
       name: "Daniel Evans",
       email: "daniel.e@email.com",
-      avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-22",
     status: "Pending",
@@ -98,7 +94,6 @@ const initialBills = [
     patient: {
       name: "Jackson Lee",
       email: "jackson.lee@email.com",
-      avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-25",
     status: "Unpaid",
@@ -110,7 +105,8 @@ const initialBills = [
 ];
 
 type BillStatus = "Paid" | "Unpaid" | "Pending";
-type Bill = typeof initialBills[0];
+type Bill = Omit<typeof initialBills[0], 'patient'> & { patient: { name: string, email: string }};
+
 
 export default function AdminBillingPage() {
   const [bills, setBills] = useState(initialBills);
@@ -170,7 +166,6 @@ export default function AdminBillingPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={bill.patient.avatar} alt={bill.patient.name} data-ai-hint="patient avatar" />
                         <AvatarFallback>{bill.patient.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div>

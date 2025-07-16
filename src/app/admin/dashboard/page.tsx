@@ -26,35 +26,35 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const appointments = [
   {
-    patient: { name: "Olivia Martin", email: "olivia.martin@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Olivia Martin", email: "olivia.martin@email.com" },
     doctor: "Dr. Lee",
     date: "2023-06-23",
     time: "02:00 PM",
     status: "Completed",
   },
   {
-    patient: { name: "Jackson Lee", email: "jackson.lee@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Jackson Lee", email: "jackson.lee@email.com" },
     doctor: "Dr. Davis",
     date: "2023-06-24",
     time: "03:00 PM",
     status: "Scheduled",
   },
   {
-    patient: { name: "Isabella Nguyen", email: "isabella.nguyen@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Isabella Nguyen", email: "isabella.nguyen@email.com" },
     doctor: "Dr. Wilson",
     date: "2023-06-25",
     time: "11:00 AM",
     status: "Scheduled",
   },
   {
-    patient: { name: "William Kim", email: "will@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "William Kim", email: "will@email.com" },
     doctor: "Dr. Miller",
     date: "2023-06-26",
     time: "09:30 AM",
     status: "Canceled",
   },
   {
-    patient: { name: "Sofia Davis", email: "sofia.davis@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Sofia Davis", email: "sofia.davis@email.com" },
     doctor: "Dr. Garcia",
     date: "2023-06-27",
     time: "01:00 PM",
@@ -139,7 +139,6 @@ export default function AdminDashboardPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={appointment.patient.avatar} alt={appointment.patient.name} data-ai-hint="patient avatar" />
                           <AvatarFallback>{appointment.patient.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>

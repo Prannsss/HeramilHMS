@@ -53,7 +53,6 @@ const initialPatients = [
     id: "PAT001",
     name: "Amelia Johnson",
     email: "amelia.j@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
     status: "Active",
@@ -74,7 +73,6 @@ const initialPatients = [
     id: "PAT002",
     name: "Benjamin Carter",
     email: "ben.c@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
     status: "Active",
@@ -92,7 +90,6 @@ const initialPatients = [
     id: "PAT003",
     name: "Charlotte Davis",
     email: "charlotte.d@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
     status: "Discharged",
@@ -110,7 +107,6 @@ const initialPatients = [
     id: "PAT004",
     name: "Daniel Evans",
     email: "daniel.e@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "2001-01-30",
     lastVisit: "2023-06-18",
     status: "Active",
@@ -128,7 +124,6 @@ const initialPatients = [
     id: "PAT005",
     name: "Evelyn Foster",
     email: "evelyn.f@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1999-07-19",
     lastVisit: "2023-06-01",
     status: "Active",
@@ -165,7 +160,6 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
             <TableCell>
               <div className="flex items-center gap-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={patient.avatar} alt={patient.name} data-ai-hint="patient avatar" />
                   <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div>
@@ -227,7 +221,6 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
         <div className="grid gap-6 py-4">
             <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                    <AvatarImage src={patient.avatar} alt={patient.name} data-ai-hint="patient avatar" />
                     <AvatarFallback>{patient.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                 </Avatar>
                 <div>

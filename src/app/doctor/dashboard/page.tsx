@@ -30,17 +30,17 @@ import { Textarea } from "@/components/ui/textarea";
 
 const upcomingAppointments = [
   {
-    patient: { name: "Liam Johnson", email: "liam@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Liam Johnson", email: "liam@email.com" },
     time: "09:00 AM",
     reason: "Follow-up",
   },
   {
-    patient: { name: "Emma Brown", email: "emma@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Emma Brown", email: "emma@email.com" },
     time: "10:30 AM",
     reason: "Annual Check-up",
   },
   {
-    patient: { name: "Noah Williams", email: "noah@email.com", avatar: "https://placehold.co/32x32.png" },
+    patient: { name: "Noah Williams", email: "noah@email.com" },
     time: "11:15 AM",
     reason: "Consultation",
   },
@@ -51,7 +51,6 @@ const initialPatients = [
     id: "PAT001",
     name: "Amelia Johnson",
     email: "amelia.j@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
     status: "Active",
@@ -65,7 +64,6 @@ const initialPatients = [
     id: "PAT002",
     name: "Benjamin Carter",
     email: "ben.c@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
     status: "Active",
@@ -79,7 +77,6 @@ const initialPatients = [
     id: "PAT003",
     name: "Charlotte Davis",
     email: "charlotte.d@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
     status: "Discharged",
@@ -93,7 +90,6 @@ const initialPatients = [
     id: "PAT004",
     name: "Daniel Evans",
     email: "daniel.e@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "2001-01-30",
     lastVisit: "2023-06-18",
     status: "Active",
@@ -107,7 +103,6 @@ const initialPatients = [
     id: "PAT005",
     name: "Evelyn Foster",
     email: "evelyn.f@email.com",
-    avatar: "https://placehold.co/32x32.png",
     dob: "1999-07-19",
     lastVisit: "2023-06-01",
     status: "Active",
@@ -159,7 +154,6 @@ export default function DoctorDashboardPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={appt.patient.avatar} alt={appt.patient.name} data-ai-hint="patient avatar" />
                             <AvatarFallback>{appt.patient.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <span className="font-medium">{appt.patient.name}</span>
@@ -197,7 +191,6 @@ export default function DoctorDashboardPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={patient.avatar} alt={patient.name} data-ai-hint="patient avatar" />
                             <AvatarFallback>{patient.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
@@ -235,7 +228,6 @@ export default function DoctorDashboardPage() {
                     <CardContent className="flex-1 flex flex-col space-y-4">
                         <div className="flex justify-center">
                             <Avatar className="h-24 w-24">
-                                <AvatarImage src={selectedPatient.avatar} alt={selectedPatient.name} data-ai-hint="patient avatar" />
                                 <AvatarFallback>{selectedPatient.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                             </Avatar>
                         </div>

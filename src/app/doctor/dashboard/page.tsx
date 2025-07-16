@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 const upcomingAppointments = [
   {
@@ -59,6 +60,7 @@ const initialPatients = [
     dateOfAdmission: "2023-06-12",
     reasonForAdmission: "Routine Check-up",
     dateOfDischarge: null,
+    diagnosisNotes: ["Routine check-up, vitals are stable. Discussed diet and exercise."],
   },
   {
     id: "PAT002",
@@ -72,6 +74,7 @@ const initialPatients = [
     dateOfAdmission: "2023-06-08",
     reasonForAdmission: "Fractured Arm",
     dateOfDischarge: null,
+    diagnosisNotes: [],
   },
   {
     id: "PAT003",
@@ -85,6 +88,7 @@ const initialPatients = [
     dateOfAdmission: "2023-05-15",
     reasonForAdmission: "Minor Surgery",
     dateOfDischarge: "2023-05-20",
+    diagnosisNotes: [],
   },
   {
     id: "PAT004",
@@ -98,6 +102,7 @@ const initialPatients = [
     dateOfAdmission: "2023-06-18",
     reasonForAdmission: "Allergic Reaction",
     dateOfDischarge: null,
+    diagnosisNotes: [],
   },
   {
     id: "PAT005",
@@ -111,6 +116,7 @@ const initialPatients = [
     dateOfAdmission: "2023-05-28",
     reasonForAdmission: "Migraine Treatment",
     dateOfDischarge: null,
+    diagnosisNotes: [],
   },
 ];
 
@@ -125,10 +131,46 @@ const getInitials = (name: string) => {
 
 export default function DoctorDashboardPage() {
   const [patients, setPatients] = useState(initialPatients.filter(p => p.status === 'Active'));
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(patients[0]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(patients[0] || null);
+  const [diagnosisNotes, setDiagnosisNotes] = useState("");
+  const { toast } = useToast();
 
   const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
+    setDiagnosisNotes(""); // Clear notes when switching patients
+  };
+
+  const handleSaveNotes = () => {
+    if (!selectedPatient) {
+        toast({
+            variant: "destructive",
+            title: "No Patient Selected",
+            description: "Please select a patient before saving notes.",
+        });
+        return;
+    }
+    if (!diagnosisNotes.trim()) {
+        toast({
+            variant: "destructive",
+            title: "Empty Note",
+            description: "Please enter a diagnosis note before saving.",
+        });
+        return;
+    }
+
+    setPatients(prevPatients =>
+        prevPatients.map(p =>
+            p.id === selectedPatient.id
+                ? { ...p, diagnosisNotes: [...p.diagnosisNotes, diagnosisNotes] }
+                : p
+        )
+    );
+
+    toast({
+        title: "Notes Saved",
+        description: `Diagnosis notes for ${selectedPatient.name} have been saved.`,
+    });
+    setDiagnosisNotes(""); // Clear the textarea after saving
   };
 
   return (
@@ -248,11 +290,17 @@ export default function DoctorDashboardPage() {
                         </div>
                         <div className="space-y-1 flex-1 flex flex-col">
                             <Label htmlFor="notes">Diagnosis Notes</Label>
-                            <Textarea id="notes" placeholder="Enter diagnosis notes..." className="flex-1" />
+                            <Textarea 
+                                id="notes" 
+                                placeholder="Enter diagnosis notes..." 
+                                className="flex-1"
+                                value={diagnosisNotes}
+                                onChange={(e) => setDiagnosisNotes(e.target.value)}
+                            />
                         </div>
                     </CardContent>
                     <CardFooter>
-                    <Button className="w-full">Save Notes</Button>
+                    <Button className="w-full" onClick={handleSaveNotes}>Save Notes</Button>
                     </CardFooter>
                 </>
             ) : (

@@ -23,6 +23,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
     { href: "/admin/patients", label: "Patients" },
     { href: "/admin/staff", label: "Staff" },
     { href: "/admin/inventory", label: "Inventory" },
+    { href: "/admin/billing", label: "Billing" },
   ];
 
   const doctorNavItems = [

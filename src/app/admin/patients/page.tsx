@@ -4,7 +4,6 @@
 import { useState } from "react";
 import { Eye, PlusCircle, Search, MoreHorizontal, LogOut } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
-import { PageHeader } from "@/components/page-header";
 import {
   Card,
   CardContent,
@@ -47,6 +46,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 const initialPatients = [
   {
@@ -57,11 +57,18 @@ const initialPatients = [
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
     status: "Active",
+    doctor: "Dr. Evelyn Reed",
     bloodType: "A+",
     allergies: "Peanuts",
     dateOfAdmission: "2023-06-12",
     reasonForAdmission: "Routine Check-up",
     dateOfDischarge: null,
+    prescriptions: ["Lisinopril 10mg for hypertension."],
+    usedItems: [],
+    billItems: [
+        { description: "Consultation Fee", amount: "$150.00" },
+        { description: "Medication - Lisinopril", amount: "$25.00" },
+    ],
   },
   {
     id: "PAT002",
@@ -71,11 +78,15 @@ const initialPatients = [
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
     status: "Active",
+    doctor: "Dr. Kenji Tanaka",
     bloodType: "O-",
     allergies: "None",
     dateOfAdmission: "2023-06-08",
     reasonForAdmission: "Fractured Arm",
     dateOfDischarge: null,
+    prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Lab Test - Blood Panel", amount: "$100.00" }],
   },
   {
     id: "PAT003",
@@ -85,11 +96,15 @@ const initialPatients = [
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
     status: "Discharged",
+    doctor: "Dr. Evelyn Reed",
     bloodType: "B+",
     allergies: "Pollen",
     dateOfAdmission: "2023-05-15",
     reasonForAdmission: "Minor Surgery",
     dateOfDischarge: "2023-05-20",
+    prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Emergency Room Visit", amount: "$200.00" }, {description: "Medication", amount: "$100.00"}],
   },
   {
     id: "PAT004",
@@ -99,11 +114,15 @@ const initialPatients = [
     dob: "2001-01-30",
     lastVisit: "2023-06-18",
     status: "Active",
+    doctor: "Dr. Evelyn Reed",
     bloodType: "AB+",
     allergies: "Aspirin",
     dateOfAdmission: "2023-06-18",
     reasonForAdmission: "Allergic Reaction",
     dateOfDischarge: null,
+    prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Follow-up Visit", amount: "$75.50" }],
   },
   {
     id: "PAT005",
@@ -113,11 +132,15 @@ const initialPatients = [
     dob: "1999-07-19",
     lastVisit: "2023-06-01",
     status: "Active",
+    doctor: "Dr. Mark O'Connell",
     bloodType: "O+",
     allergies: "None",
     dateOfAdmission: "2023-05-28",
     reasonForAdmission: "Migraine Treatment",
     dateOfDischarge: null,
+    prescriptions: [],
+    usedItems: [],
+    billItems: [{ description: "Surgical Procedure", amount: "$450.00" }, { description: "Anesthesia", amount: "$50.20" }],
   },
 ];
 
@@ -192,6 +215,8 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
 function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void }) {
   if (!patient) return null;
 
+  const totalBill = patient.billItems.reduce((acc, item) => acc + parseFloat(item.amount.replace('$', '')), 0);
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -243,6 +268,27 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                     <p>{patient.reasonForAdmission}</p>
                 </div>
             </div>
+             {(patient.prescriptions && patient.prescriptions.length > 0) && (
+                <div className="space-y-4">
+                    <Separator />
+                    <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Prescription History</h4>
+                        <ul className="mt-2 space-y-2 text-sm list-disc list-inside">
+                            {patient.prescriptions.map((p, index) => <li key={index}>{p}</li>)}
+                        </ul>
+                    </div>
+                </div>
+            )}
+            <div className="space-y-4">
+                <Separator />
+                <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Billing Summary</h4>
+                     <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+                        <span>Total Bill</span>
+                        <span>${totalBill.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
         </div>
         <DialogFooter>
             <Button onClick={() => onOpenChange(false)}>Close</Button>
@@ -286,7 +332,6 @@ export default function AdminPatientsPage() {
 
   return (
     <DashboardLayout role="admin">
-      
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Patient Records</CardTitle>
@@ -333,3 +378,5 @@ export default function AdminPatientsPage() {
     </DashboardLayout>
   );
 }
+
+    

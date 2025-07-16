@@ -1,8 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
 import DashboardLayout from '@/components/dashboard-layout';
-import { PageHeader } from '@/components/page-header';
 import {
   Card,
   CardContent,
@@ -44,11 +44,10 @@ const medicalRecords = [
     details: 'Lisinopril 10mg for hypertension.',
     bill: {
         invoiceId: 'INV-2023-001',
-        amount: '$250.00',
         status: 'Paid',
         items: [
             { description: 'Consultation Fee', amount: '$150.00' },
-            { description: 'Medication - Lisinopril', amount: '$100.00' },
+            { description: 'Medication - Lisinopril', amount: '$25.00' },
         ],
     },
   },
@@ -61,9 +60,8 @@ const medicalRecords = [
     details: 'Blood Panel: All levels normal.',
     bill: {
         invoiceId: 'INV-2023-002',
-        amount: '$150.75',
         status: 'Unpaid',
-        items: [{ description: 'Lab Test - Blood Panel', amount: '$150.75' }],
+        items: [{ description: 'Lab Test - Blood Panel', amount: '$100.75' }],
     },
   },
   {
@@ -75,7 +73,6 @@ const medicalRecords = [
     details: 'Diagnosed with seasonal allergies.',
      bill: {
         invoiceId: 'INV-2023-003',
-        amount: '$100.00',
         status: 'Paid',
         items: [{ description: 'Consultation', amount: '$100.00' }],
     },
@@ -89,7 +86,6 @@ const medicalRecords = [
     details: 'Amoxicillin 500mg for infection.',
      bill: {
         invoiceId: 'INV-2023-004',
-        amount: '$75.50',
         status: 'Pending',
         items: [
             { description: 'Follow-up Visit', amount: '$50.00' },
@@ -106,7 +102,6 @@ const medicalRecords = [
     details: 'X-Ray: No fractures detected.',
      bill: {
         invoiceId: 'INV-2023-005',
-        amount: '$180.00',
         status: 'Unpaid',
         items: [{ description: 'X-Ray', amount: '$180.00' }],
     },
@@ -116,6 +111,7 @@ const medicalRecords = [
 type MedicalRecord = typeof medicalRecords[0];
 
 function MedicalRecordModal({ record }: { record: MedicalRecord }) {
+  const totalAmount = record.bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2);
   return (
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
@@ -170,7 +166,7 @@ function MedicalRecordModal({ record }: { record: MedicalRecord }) {
             </div>
             <div className="flex justify-between font-bold text-lg border-t pt-2 mt-4">
                 <span>Total Amount</span>
-                <span>{record.bill.amount}</span>
+                <span>${totalAmount}</span>
             </div>
         </div>
       </div>
@@ -207,7 +203,6 @@ export default function AdminMedicalPage() {
 
   return (
     <DashboardLayout role="admin">
-      
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>All Records</CardTitle>
@@ -280,3 +275,5 @@ export default function AdminMedicalPage() {
     </DashboardLayout>
   );
 }
+
+    

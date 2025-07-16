@@ -51,11 +51,10 @@ const initialBills = [
       avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-15",
-    amount: "$250.00",
     status: "Paid",
     items: [
-      { description: "Consultation Fee", amount: "$150.00" },
-      { description: "Lab Test - Blood Panel", amount: "$100.00" },
+        { description: "Consultation Fee", amount: "$150.00" },
+        { description: "Medication - Lisinopril", amount: "$25.00" },
     ],
   },
   {
@@ -66,9 +65,8 @@ const initialBills = [
       avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-18",
-    amount: "$150.75",
     status: "Unpaid",
-    items: [{ description: "X-Ray", amount: "$150.75" }],
+    items: [{ description: "Lab Test - Blood Panel", amount: "$100.75" }],
   },
   {
     invoiceId: "INV-2023-003",
@@ -78,7 +76,6 @@ const initialBills = [
       avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-20",
-    amount: "$300.00",
     status: "Paid",
     items: [
       { description: "Emergency Room Visit", amount: "$200.00" },
@@ -93,7 +90,6 @@ const initialBills = [
       avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-22",
-    amount: "$75.50",
     status: "Pending",
     items: [{ description: "Follow-up Visit", amount: "$75.50" }],
   },
@@ -105,7 +101,6 @@ const initialBills = [
       avatar: "https://placehold.co/32x32.png",
     },
     date: "2023-06-25",
-    amount: "$500.20",
     status: "Unpaid",
     items: [
       { description: "Surgical Procedure", amount: "$450.00" },
@@ -143,7 +138,6 @@ export default function AdminBillingPage() {
 
   return (
     <DashboardLayout role="admin">
-      
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Patient Invoices</CardTitle>

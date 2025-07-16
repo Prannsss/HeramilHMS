@@ -21,6 +21,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
 
   const adminNavItems = [
     { href: "/admin/dashboard", label: "Dashboard" },
+    { href: "/admin/appointments", label: "Appointments" },
     { href: "/admin/reports", label: "Report" },
     { href: "/admin/patients", label: "Patients" },
     { href: "/admin/medical", label: "Medical" },

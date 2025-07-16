@@ -42,7 +42,7 @@ export default function LoginPage() {
                 <Input id="password" type="password" required />
                  <div className="text-right">
                     <Link
-                        href="#"
+                        href="/forgot-password"
                         className="inline-block text-sm underline"
                     >
                         Forgot your password?

@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 
 // Mocking a logged-in doctor
 const LOGGED_IN_DOCTOR = "Dr. Evelyn Reed";
@@ -67,6 +68,7 @@ const initialPatients = [
     dateOfAdmission: "2023-06-12",
     reasonForAdmission: "Routine Check-up",
     dateOfDischarge: null,
+    prescriptions: ["Lisinopril 10mg for hypertension."],
   },
   {
     id: "PAT002",
@@ -82,6 +84,7 @@ const initialPatients = [
     dateOfAdmission: "2023-06-08",
     reasonForAdmission: "Fractured Arm",
     dateOfDischarge: null,
+    prescriptions: [],
   },
   {
     id: "PAT003",
@@ -97,6 +100,7 @@ const initialPatients = [
     dateOfAdmission: "2023-05-15",
     reasonForAdmission: "Minor Surgery",
     dateOfDischarge: "2023-05-20",
+    prescriptions: [],
   },
   {
     id: "PAT004",
@@ -112,6 +116,7 @@ const initialPatients = [
     dateOfAdmission: "2023-06-18",
     reasonForAdmission: "Allergic Reaction",
     dateOfDischarge: null,
+    prescriptions: [],
   },
   {
     id: "PAT005",
@@ -127,6 +132,7 @@ const initialPatients = [
     dateOfAdmission: "2023-05-28",
     reasonForAdmission: "Migraine Treatment",
     dateOfDischarge: null,
+    prescriptions: [],
   },
 ];
 
@@ -258,6 +264,17 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                     <p>{patient.reasonForAdmission}</p>
                 </div>
             </div>
+            {patient.prescriptions && patient.prescriptions.length > 0 && (
+                <div className="space-y-4">
+                    <Separator />
+                    <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Prescription History</h4>
+                        <ul className="mt-2 space-y-2 text-sm list-disc list-inside">
+                            {patient.prescriptions.map((p, index) => <li key={index}>{p}</li>)}
+                        </ul>
+                    </div>
+                </div>
+            )}
         </div>
         <DialogFooter>
             <Button onClick={() => onOpenChange(false)}>Close</Button>
@@ -267,12 +284,12 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
   );
 }
 
-function PrescriptionModal({ patient, isOpen, onOpenChange }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void }) {
+function PrescriptionModal({ patient, isOpen, onOpenChange, onSave }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void, onSave: (patientId: string, prescription: string) => void }) {
     const [prescription, setPrescription] = useState('');
 
     const handleSave = () => {
-        // Here you would typically save the prescription to a database
-        console.log(`Prescription for ${patient?.name}: ${prescription}`);
+        if (!patient || !prescription) return;
+        onSave(patient.id, prescription);
         onOpenChange(false);
         setPrescription('');
     };
@@ -280,7 +297,7 @@ function PrescriptionModal({ patient, isOpen, onOpenChange }: { patient: Patient
     if (!patient) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); if (!open) setPrescription('')}}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>New Prescription for {patient.name}</DialogTitle>
@@ -323,6 +340,18 @@ export default function DoctorPatientsPage() {
     setSelectedPatient(patient);
     setIsPrescribeModalOpen(true);
   }
+
+  const handleSavePrescription = (patientId: string, prescription: string) => {
+    setPatients(currentPatients => currentPatients.map(p => {
+        if (p.id === patientId) {
+            return {
+                ...p,
+                prescriptions: [...p.prescriptions, prescription]
+            };
+        }
+        return p;
+    }));
+  };
 
   const filteredPatients = patients.filter(patient =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -373,7 +402,7 @@ export default function DoctorPatientsPage() {
         </CardFooter>
       </Card>
       <PatientInfoModal patient={selectedPatient} isOpen={isInfoModalOpen} onOpenChange={setIsInfoModalOpen} />
-      <PrescriptionModal patient={selectedPatient} isOpen={isPrescribeModalOpen} onOpenChange={setIsPrescribeModalOpen} />
+      <PrescriptionModal patient={selectedPatient} isOpen={isPrescribeModalOpen} onOpenChange={setIsPrescribeModalOpen} onSave={handleSavePrescription} />
     </DashboardLayout>
   );
 }

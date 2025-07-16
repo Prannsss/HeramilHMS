@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -28,6 +29,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
   const doctorNavItems = [
     { href: "/doctor/dashboard", label: "Dashboard" },
+    { href: "/doctor/reports", label: "Reports" },
     { href: "/doctor/ai-diagnosis", label: "AI Diagnosis" },
     { href: "/doctor/patients", label: "Patients" },
     { href: "/doctor/medical", label: "Medical" },

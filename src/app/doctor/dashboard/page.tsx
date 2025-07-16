@@ -122,7 +122,7 @@ const initialPatients = [
 type Patient = typeof initialPatients[0];
 
 export default function DoctorDashboardPage() {
-  const [patients, setPatients] = useState(initialPatients);
+  const [patients, setPatients] = useState(initialPatients.filter(p => p.status === 'Active'));
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(patients[0]);
 
   const handlePatientSelect = (patient: Patient) => {
@@ -176,9 +176,9 @@ export default function DoctorDashboardPage() {
 
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Patient List</CardTitle>
+              <CardTitle>Your Active Patients</CardTitle>
               <CardDescription>
-                List of your currently assigned patients.
+                List of your currently assigned active patients.
               </CardDescription>
             </CardHeader>
             <CardContent>

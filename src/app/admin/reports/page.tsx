@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 
 import DashboardLayout from '@/components/dashboard-layout';
@@ -51,6 +51,7 @@ const formSchema = z.object({
 export default function ReportsPage() {
   const [report, setReport] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -60,6 +61,7 @@ export default function ReportsPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setReport('');
+    setDateRange(values.dateRange);
     try {
       const result = await generateServiceLogReport({
         startDate: format(values.dateRange.from, 'yyyy-MM-dd'),
@@ -81,6 +83,22 @@ export default function ReportsPage() {
       setIsLoading(false);
     }
   }
+
+  const handleDownload = () => {
+    if (!report || !dateRange) return;
+
+    const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fromDate = format(dateRange.from, 'yyyy-MM-dd');
+    const toDate = format(dateRange.to, 'yyyy-MM-dd');
+    link.download = `report-${fromDate}-to-${toDate}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <DashboardLayout role="admin">
@@ -163,10 +181,20 @@ export default function ReportsPage() {
         <div className="md:col-span-2">
           <Card className="min-h-[400px]">
             <CardHeader>
-              <CardTitle>Generated Report</CardTitle>
-              <CardDescription>
-                AI-generated summary and insights will appear here.
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Generated Report</CardTitle>
+                  <CardDescription>
+                    AI-generated summary and insights will appear here.
+                  </CardDescription>
+                </div>
+                {report && !isLoading && (
+                  <Button onClick={handleDownload} variant="outline" size="sm">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isLoading && (
@@ -181,6 +209,11 @@ export default function ReportsPage() {
                  className="h-96 w-full text-sm bg-secondary"
                />
               )}
+               {!isLoading && !report && (
+                <div className="flex h-full items-center justify-center">
+                    <p className="text-muted-foreground">Your report will be displayed here.</p>
+                </div>
+               )}
             </CardContent>
           </Card>
         </div>

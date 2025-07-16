@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -17,6 +18,16 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from '@/components/ui/dialog';
+import {
   Form,
   FormControl,
   FormField,
@@ -27,7 +38,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -46,10 +56,109 @@ const passwordFormSchema = z
     path: ['confirmPassword'],
   });
 
+
+function ChangePasswordModal() {
+    const { toast } = useToast();
+    const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+
+    const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
+        resolver: zodResolver(passwordFormSchema),
+        defaultValues: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        },
+    });
+
+    function onPasswordSubmit(values: z.infer<typeof passwordFormSchema>) {
+        setIsPasswordLoading(true);
+        setTimeout(() => {
+        console.log(values);
+        toast({
+            title: 'Password Changed',
+            description: 'Your password has been successfully changed.',
+        });
+        passwordForm.reset();
+        setIsPasswordLoading(false);
+        setIsOpen(false);
+        }, 1500);
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">Change Password</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Change Password</DialogTitle>
+                    <DialogDescription>
+                        Choose a new password for your account.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...passwordForm}>
+                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                        <FormField
+                            control={passwordForm.control}
+                            name="currentPassword"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Current Password</FormLabel>
+                                <FormControl>
+                                <Input type="password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={passwordForm.control}
+                            name="newPassword"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>New Password</FormLabel>
+                                <FormControl>
+                                <Input type="password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={passwordForm.control}
+                            name="confirmPassword"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Confirm New Password</FormLabel>
+                                <FormControl>
+                                <Input type="password" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={isPasswordLoading}>
+                                {isPasswordLoading && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Change Password
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export default function DoctorProfilePage() {
   const { toast } = useToast();
   const [isProfileLoading, setIsProfileLoading] = useState(false);
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -57,15 +166,6 @@ export default function DoctorProfilePage() {
       name: 'Dr. Evelyn Reed',
       email: 'e.reed@email.com',
       specialization: 'Cardiologist',
-    },
-  });
-
-  const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
-    resolver: zodResolver(passwordFormSchema),
-    defaultValues: {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
     },
   });
 
@@ -78,19 +178,6 @@ export default function DoctorProfilePage() {
         description: 'Your profile information has been successfully updated.',
       });
       setIsProfileLoading(false);
-    }, 1500);
-  }
-
-  function onPasswordSubmit(values: z.infer<typeof passwordFormSchema>) {
-    setIsPasswordLoading(true);
-    setTimeout(() => {
-      console.log(values);
-      toast({
-        title: 'Password Changed',
-        description: 'Your password has been successfully changed.',
-      });
-      passwordForm.reset();
-      setIsPasswordLoading(false);
     }, 1500);
   }
 
@@ -168,75 +255,14 @@ export default function DoctorProfilePage() {
                     )}
                   />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex justify-between">
                   <Button type="submit" disabled={isProfileLoading}>
                     {isProfileLoading && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
                     Save Changes
                   </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </Card>
-
-          <Card>
-            <Form {...passwordForm}>
-              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}>
-                <CardHeader>
-                  <CardTitle>Change Password</CardTitle>
-                  <CardDescription>
-                    Choose a new password for your account.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={passwordForm.control}
-                    name="currentPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={passwordForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={passwordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" disabled={isPasswordLoading}>
-                    {isPasswordLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Change Password
-                  </Button>
+                  <ChangePasswordModal />
                 </CardFooter>
               </form>
             </Form>

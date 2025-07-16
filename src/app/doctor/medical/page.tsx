@@ -174,7 +174,7 @@ function MedicalRecordModal({ record }: { record: MedicalRecord }) {
             </div>
         </div>
       </div>
-      <DialogFooter>
+      <DialogFooter className="mt-4 h-8">
       </DialogFooter>
     </DialogContent>
   );

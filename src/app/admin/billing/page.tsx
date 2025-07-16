@@ -238,6 +238,41 @@ export default function AdminBillingPage() {
 
 function InvoiceModal({ bill }: { bill: Bill }) {
   const totalAmount = bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0);
+  
+  const handlePrint = () => {
+    const totalAmount = bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0);
+
+    const invoiceContent = `
+                        Heramil Hospital
+
+---------------------------------------------------------
+
+Invoice ID: ${bill.invoiceId}
+Patient: ${bill.patient.name}
+Date: ${bill.date}
+Status: ${bill.status}
+
+---------------------------------------------------------
+
+Items:
+${bill.items.map(item => `${item.description.padEnd(30)} ${item.amount}`).join('\n')}
+
+---------------------------------------------------------
+
+Total Amount: $${totalAmount.toFixed(2)}
+
+`;
+    const blob = new Blob([invoiceContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice-${bill.invoiceId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
@@ -274,10 +309,8 @@ function InvoiceModal({ bill }: { bill: Bill }) {
         </div>
       </div>
       <DialogFooter>
-        <Button type="submit">Print Invoice</Button>
+        <Button onClick={handlePrint}>Print Invoice</Button>
       </DialogFooter>
     </DialogContent>
   );
 }
-
-    

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from 'next/navigation'
 import {
   Avatar,
   AvatarFallback,
@@ -18,6 +19,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function UserNav() {
+  const pathname = usePathname();
+  const isDoctor = pathname.startsWith('/doctor');
+  
+  const profileLink = isDoctor ? "/doctor/profile" : "/admin/profile";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -39,8 +45,8 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            Profile
+          <DropdownMenuItem asChild>
+            <Link href={profileLink}>Profile</Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             Settings

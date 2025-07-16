@@ -20,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
 
 const initialBills = [
   {
@@ -51,6 +49,7 @@ const initialBills = [
       email: "amelia.j@email.com",
     },
     date: "2023-06-15",
+    dateOfAdmission: "2023-06-12",
     status: "Paid",
     items: [
         { description: "Consultation Fee", amount: "$150.00" },
@@ -64,6 +63,7 @@ const initialBills = [
       email: "ben.c@email.com",
     },
     date: "2023-06-18",
+    dateOfAdmission: "2023-06-08",
     status: "Unpaid",
     items: [{ description: "Lab Test - Blood Panel", amount: "$100.75" }],
   },
@@ -74,6 +74,7 @@ const initialBills = [
       email: "evelyn.f@email.com",
     },
     date: "2023-06-20",
+    dateOfAdmission: "2023-05-28",
     status: "Paid",
     items: [
       { description: "Emergency Room Visit", amount: "$200.00" },
@@ -87,6 +88,7 @@ const initialBills = [
       email: "daniel.e@email.com",
     },
     date: "2023-06-22",
+    dateOfAdmission: "2023-06-18",
     status: "Pending",
     items: [{ description: "Follow-up Visit", amount: "$75.50" }],
   },
@@ -97,6 +99,7 @@ const initialBills = [
       email: "jackson.lee@email.com",
     },
     date: "2023-06-25",
+    dateOfAdmission: "2023-05-28", // Assuming a placeholder, will need to be added to patient data
     status: "Unpaid",
     items: [
       { description: "Surgical Procedure", amount: "$450.00" },
@@ -128,7 +131,7 @@ function BillTable({ bills, onStatusChange, onDelete }: { bills: Bill[], onStatu
         <TableRow>
           <TableHead>Invoice ID</TableHead>
           <TableHead>Patient</TableHead>
-          <TableHead>Date</TableHead>
+          <TableHead>Invoice Date</TableHead>
           <TableHead>Amount</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -265,7 +268,8 @@ function InvoiceModal({ bill }: { bill: Bill }) {
 
 Invoice ID: ${bill.invoiceId}
 Patient: ${bill.patient.name}
-Date: ${bill.date}
+Date of Admission: ${bill.dateOfAdmission}
+Invoice Date: ${bill.date}
 Status: ${bill.status}
 
 ---------------------------------------------------------
@@ -303,7 +307,11 @@ Total Amount: $${totalAmount.toFixed(2)}
             <span>{bill.patient.name}</span>
         </div>
         <div className="flex justify-between">
-            <span className="text-muted-foreground">Date:</span>
+            <span className="text-muted-foreground">Date of Admission:</span>
+            <span>{bill.dateOfAdmission}</span>
+        </div>
+        <div className="flex justify-between">
+            <span className="text-muted-foreground">Invoice Date:</span>
             <span>{bill.date}</span>
         </div>
         <div className="flex justify-between">

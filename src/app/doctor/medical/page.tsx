@@ -23,7 +23,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +39,7 @@ const medicalRecords = [
     patient: { name: 'Amelia Johnson' },
     doctor: 'Dr. Evelyn Reed',
     date: '2023-06-15',
+    dateOfAdmission: '2023-06-12',
     type: 'Prescription',
     details: 'Lisinopril 10mg for hypertension.',
     bill: {
@@ -56,6 +56,7 @@ const medicalRecords = [
     patient: { name: 'Benjamin Carter' },
     doctor: 'Dr. Kenji Tanaka',
     date: '2023-06-18',
+    dateOfAdmission: '2023-06-08',
     type: 'Test Result',
     details: 'Blood Panel: All levels normal.',
     bill: {
@@ -69,6 +70,7 @@ const medicalRecords = [
     patient: { name: 'Charlotte Davis' },
     doctor: 'Dr. Mark O\'Connell',
     date: '2023-06-20',
+    dateOfAdmission: '2023-05-15',
     type: 'Diagnosis',
     details: 'Diagnosed with seasonal allergies.',
      bill: {
@@ -82,6 +84,7 @@ const medicalRecords = [
     patient: { name: 'Daniel Evans' },
     doctor: 'Dr. Evelyn Reed',
     date: '2023-06-22',
+    dateOfAdmission: '2023-06-18',
     type: 'Prescription',
     details: 'Amoxicillin 500mg for infection.',
      bill: {
@@ -98,6 +101,7 @@ const medicalRecords = [
     patient: { name: 'Evelyn Foster' },
     doctor: 'Dr. Kenji Tanaka',
     date: '2023-06-25',
+    dateOfAdmission: '2023-05-28',
     type: 'Test Result',
     details: 'X-Ray: No fractures detected.',
      bill: {
@@ -131,7 +135,11 @@ function MedicalRecordModal({ record }: { record: MedicalRecord }) {
                 <p>{record.doctor}</p>
             </div>
              <div>
-                <p className="font-medium text-muted-foreground">Date</p>
+                <p className="font-medium text-muted-foreground">Date of Admission</p>
+                <p>{record.dateOfAdmission}</p>
+            </div>
+             <div>
+                <p className="font-medium text-muted-foreground">Record Date</p>
                 <p>{record.date}</p>
             </div>
              <div>
@@ -264,5 +272,3 @@ export default function DoctorMedicalPage() {
     </DashboardLayout>
   );
 }
-
-    

@@ -20,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,9 +35,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Tabs,
@@ -148,7 +145,7 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
         <TableRow>
           <TableHead>Patient</TableHead>
           <TableHead>Patient ID</TableHead>
-          <TableHead>Date of Birth</TableHead>
+          <TableHead>Date of Admission</TableHead>
           <TableHead>Last Visit</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -166,7 +163,7 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
               </div>
             </TableCell>
             <TableCell>{patient.id}</TableCell>
-            <TableCell>{patient.dob}</TableCell>
+            <TableCell>{patient.dateOfAdmission}</TableCell>
             <TableCell>{patient.lastVisit}</TableCell>
             <TableCell>
               <Badge variant={patient.status === 'Active' ? 'secondary' : 'outline'}>

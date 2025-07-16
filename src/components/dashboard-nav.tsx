@@ -31,7 +31,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
 
   const doctorNavItems = [
     { href: "/doctor/dashboard", label: "Dashboard" },
-    { href: "/doctor/ai-diagnosis", label: "AI Diagnosis" },
+    { href: "/doctor/ai-diagnosis", label: "Diagnosis" },
     { href: "/doctor/patients", label: "Patients" },
     { href: "/doctor/medical", label: "Medical" },
   ];

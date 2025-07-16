@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { PlusCircle, Search, MoreHorizontal, Trash2 } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, Trash2, Undo2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -217,7 +217,12 @@ export default function AdminStaffPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     {member.status === 'Retired' ? (
-                       <DeleteStaffModal staffName={member.name} onDelete={() => handleDelete(member.id)} />
+                        <div className="flex justify-end items-center gap-2">
+                           <Button variant="ghost" size="sm" onClick={() => handleStatusChange(member.id, 'Active')}>
+                                <Undo2 className="mr-2 h-4 w-4" /> Undo
+                            </Button>
+                           <DeleteStaffModal staffName={member.name} onDelete={() => handleDelete(member.id)} />
+                       </div>
                     ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -351,3 +356,5 @@ function DeleteStaffModal({ staffName, onDelete }: { staffName: string, onDelete
         </AlertDialog>
     )
 }
+
+    

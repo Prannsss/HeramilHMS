@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Pen } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard-layout';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -191,11 +191,16 @@ export default function DoctorProfilePage() {
         <div className="lg:col-span-1">
           <Card className="h-full">
             <CardContent className="flex h-full flex-col items-center justify-center gap-4 p-6">
-              <Avatar className="h-32 w-32">
-                <AvatarImage src="https://placehold.co/128x128.png" data-ai-hint="doctor avatar" />
-                <AvatarFallback>DR</AvatarFallback>
-              </Avatar>
-              <Button className="w-full">Upload Picture</Button>
+              <div className="relative">
+                <Avatar className="h-32 w-32">
+                  <AvatarImage src="https://placehold.co/128x128.png" data-ai-hint="doctor avatar" />
+                  <AvatarFallback>DR</AvatarFallback>
+                </Avatar>
+                <Button size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8">
+                  <Pen className="h-4 w-4" />
+                  <span className="sr-only">Edit Profile Picture</span>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

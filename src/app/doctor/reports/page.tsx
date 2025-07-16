@@ -107,117 +107,114 @@ export default function ReportsPage() {
         title="Automated Reporting"
         description="Generate service logs and hospital usage statistics using AI."
       />
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        <div className="md:col-span-1">
-          <Card>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)}>
-                <CardHeader>
-                  <CardTitle>Report Options</CardTitle>
-                  <CardDescription>
-                    Select the date range for your report.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <FormField
-                    control={form.control}
-                    name="dateRange"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Date range</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={'outline'}
-                                className={cn(
-                                  'w-full justify-start text-left font-normal',
-                                  !field.value && 'text-muted-foreground'
-                                )}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {field.value?.from ? (
-                                  field.value.to ? (
-                                    <>
-                                      {format(field.value.from, 'LLL dd, y')} -{' '}
-                                      {format(field.value.to, 'LLL dd, y')}
-                                    </>
-                                  ) : (
-                                    format(field.value.from, 'LLL dd, y')
-                                  )
+      <div className="grid grid-cols-1 gap-8">
+        <Card>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardHeader>
+                <CardTitle>Report Options</CardTitle>
+                <CardDescription>
+                  Select the date range for your report.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="dateRange"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Date range</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={'outline'}
+                              className={cn(
+                                'w-full justify-start text-left font-normal md:w-auto',
+                                !field.value && 'text-muted-foreground'
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value?.from ? (
+                                field.value.to ? (
+                                  <>
+                                    {format(field.value.from, 'LLL dd, y')} -{' '}
+                                    {format(field.value.to, 'LLL dd, y')}
+                                  </>
                                 ) : (
-                                  <span>Pick a date range</span>
-                                )}
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              initialFocus
-                              mode="range"
-                              defaultMonth={field.value?.from}
-                              selected={{from: field.value?.from, to: field.value?.to}}
-                              onSelect={field.onChange}
-                              numberOfMonths={2}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" disabled={isLoading} className="w-full">
-                    {isLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Generate Report
-                  </Button>
-                </CardFooter>
-              </form>
-            </Form>
-          </Card>
-        </div>
-        <div className="md:col-span-2">
-          <Card className="min-h-[400px]">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Generated Report</CardTitle>
-                  <CardDescription>
-                    AI-generated summary and insights will appear here.
-                  </CardDescription>
-                </div>
-                {report && !isLoading && (
-                  <Button onClick={handleDownload} variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </Button>
-                )}
+                                  format(field.value.from, 'LLL dd, y')
+                                )
+                              ) : (
+                                <span>Pick a date range</span>
+                              )}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={field.value?.from}
+                            selected={{from: field.value?.from, to: field.value?.to}}
+                            onSelect={field.onChange}
+                            numberOfMonths={2}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Generate Report
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
+        
+        <Card className="min-h-[400px]">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Generated Report</CardTitle>
+                <CardDescription>
+                  AI-generated summary and insights will appear here.
+                </CardDescription>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading && (
-                <div className="flex items-center justify-center pt-10">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
+              {report && !isLoading && (
+                <Button onClick={handleDownload} variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
               )}
-              {report && (
-                 <Textarea
-                 readOnly
-                 value={report}
-                 className="h-96 w-full text-sm bg-secondary"
-               />
-              )}
-               {!isLoading && !report && (
-                <div className="flex h-full items-center justify-center">
-                    <p className="text-muted-foreground">Your report will be displayed here.</p>
-                </div>
-               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading && (
+              <div className="flex items-center justify-center pt-10">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
+            {report && (
+               <Textarea
+               readOnly
+               value={report}
+               className="h-96 w-full text-sm bg-secondary"
+             />
+            )}
+             {!isLoading && !report && (
+              <div className="flex h-full items-center justify-center">
+                  <p className="text-muted-foreground">Your report will be displayed here.</p>
+              </div>
+             )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

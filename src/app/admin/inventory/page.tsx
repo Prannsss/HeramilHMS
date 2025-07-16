@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo } from "react";
-import { PlusCircle, Search, Check, ChevronsUpDown } from "lucide-react";
+import { PlusCircle, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -44,6 +44,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -119,6 +120,10 @@ export default function AdminInventoryPage() {
         return item;
     }));
   };
+
+  const handleDeleteItem = (itemId: string) => {
+    setInventory(inventory.filter(item => item.id !== itemId));
+  };
   
   const filteredInventory = inventory.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const categories = useMemo(() => [...new Set(inventory.map(item => item.category))], [inventory]);
@@ -185,9 +190,12 @@ export default function AdminInventoryPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                        <AddStockModal item={item} onAddStock={handleAddStock}>
-                            <Button size="sm" variant="outline">Add Stock</Button>
-                        </AddStockModal>
+                        <div className="flex justify-end items-center gap-2">
+                            <AddStockModal item={item} onAddStock={handleAddStock}>
+                                <Button size="sm" variant="outline">Add Stock</Button>
+                            </AddStockModal>
+                            <DeleteItemModal itemName={item.name} onDelete={() => handleDeleteItem(item.id)} />
+                        </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -383,5 +391,31 @@ function AddStockModal({ children, item, onAddStock }: { children: React.ReactNo
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function DeleteItemModal({ itemName, onDelete }: { itemName: string, onDelete: () => void }) {
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" aria-label={`Delete ${itemName}`}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the item <strong>{itemName}</strong> from the inventory.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90">
+                        Yes, delete item
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }

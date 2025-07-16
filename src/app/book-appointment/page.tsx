@@ -33,6 +33,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -47,10 +54,24 @@ const appointmentFormSchema = z.object({
   date: z.date({
     required_error: 'An appointment date is required.',
   }),
+  department: z.string().min(1, 'Please select a department.'),
+  doctorId: z.string().min(1, 'Please select a doctor.'),
+  time: z.string().min(1, 'Please select a time.'),
   reason: z.string().min(10, {
     message: 'Reason must be at least 10 characters.',
   }),
 });
+
+const doctors = [
+    { id: '1', name: 'Dr. Evelyn Reed', department: 'Cardiology', availableTimes: ['09:00 AM', '11:00 AM', '02:00 PM'] },
+    { id: '2', name: 'Dr. Kenji Tanaka', department: 'Pediatrics', availableTimes: ['10:00 AM', '01:00 PM', '03:00 PM'] },
+    { id: '3', name: 'Dr. Mark O\'Connell', department: 'Radiology', availableTimes: ['09:30 AM', '11:30 AM', '04:00 PM'] },
+    { id: '4', name: 'Dr. Lee', department: 'Cardiology', availableTimes: ['10:00 AM', '12:00 PM', '03:00 PM'] },
+    { id: '5', name: 'Dr. Davis', department: 'Pediatrics', availableTimes: ['09:00 AM', '11:00 AM', '02:30 PM'] },
+    { id: '6', name: 'Dr. Wilson', department: 'Radiology', availableTimes: ['08:30 AM', '10:30 AM', '01:30 PM'] },
+];
+
+const departments = [...new Set(doctors.map(d => d.department))];
 
 export default function BookAppointmentPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -63,18 +84,31 @@ export default function BookAppointmentPage() {
       name: '',
       email: '',
       reason: '',
+      department: '',
+      doctorId: '',
+      time: '',
     },
   });
 
+  const selectedDepartment = form.watch('department');
+  const selectedDoctorId = form.watch('doctorId');
+
+  const filteredDoctors = doctors.filter(
+    (doctor) => doctor.department === selectedDepartment
+  );
+
+  const selectedDoctor = doctors.find(
+    (doctor) => doctor.id === selectedDoctorId
+  );
+
   async function onSubmit(values: z.infer<typeof appointmentFormSchema>) {
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     setIsLoading(false);
     setIsSubmitted(true);
     toast({
-      title: 'Appointment Request Sent!',
-      description: 'We have received your request and will contact you shortly to confirm.',
+      title: 'Appointment Request Received!',
+      description: 'We have successfully received your appointment please verify your appointment through an automated email that will be sent to you.',
     });
     console.log(values);
   }
@@ -92,7 +126,7 @@ export default function BookAppointmentPage() {
                         <CardDescription>Your appointment request has been successfully submitted.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-muted-foreground">We will review your request and get back to you at your provided email address to confirm the date and time.</p>
+                        <p className="text-muted-foreground">Please check your email to verify and confirm your appointment details.</p>
                     </CardContent>
                     <CardFooter>
                          <Button asChild className="w-full">
@@ -147,47 +181,117 @@ export default function BookAppointmentPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Preferred Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={'outline'}
-                              className={cn(
-                                'w-full justify-start text-left font-normal',
-                                !field.value && 'text-muted-foreground'
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? (
-                                format(field.value, 'PPP')
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date() || date < new Date('1900-01-01')
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                    control={form.control}
+                    name="department"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <Select onValueChange={(value) => { field.onChange(value); form.setValue('doctorId', ''); form.setValue('time', ''); }} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a department" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {departments.map((dept) => (
+                                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="doctorId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Doctor</FormLabel>
+                        <Select onValueChange={(value) => { field.onChange(value); form.setValue('time', ''); }} value={field.value} disabled={!selectedDepartment}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a doctor" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {filteredDoctors.map((doc) => (
+                                <SelectItem key={doc.id} value={doc.id}>{doc.name}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Preferred Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <FormControl>
+                                <Button
+                                variant={'outline'}
+                                className={cn(
+                                    'w-full justify-start text-left font-normal',
+                                    !field.value && 'text-muted-foreground'
+                                )}
+                                >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? (
+                                    format(field.value, 'PPP')
+                                ) : (
+                                    <span>Pick a date</span>
+                                )}
+                                </Button>
+                            </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                date < new Date() || date < new Date('1900-01-01')
+                                }
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="time"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Available Time</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedDoctor}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a time slot" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                {selectedDoctor?.availableTimes.map((time) => (
+                                    <SelectItem key={time} value={time}>{time}</SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </div>
                 <FormField
                   control={form.control}
                   name="reason"

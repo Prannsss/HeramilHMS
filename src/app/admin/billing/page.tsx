@@ -1,4 +1,7 @@
-import { Search } from "lucide-react";
+'use client';
+
+import { useState } from "react";
+import { Eye, Search, Trash2, Edit, MoreHorizontal } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -20,8 +23,26 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
 
-const bills = [
+const initialBills = [
   {
     invoiceId: "INV-2023-001",
     patient: {
@@ -32,6 +53,10 @@ const bills = [
     date: "2023-06-15",
     amount: "$250.00",
     status: "Paid",
+    items: [
+      { description: "Consultation Fee", amount: "$150.00" },
+      { description: "Lab Test - Blood Panel", amount: "$100.00" },
+    ],
   },
   {
     invoiceId: "INV-2023-002",
@@ -43,6 +68,7 @@ const bills = [
     date: "2023-06-18",
     amount: "$150.75",
     status: "Unpaid",
+    items: [{ description: "X-Ray", amount: "$150.75" }],
   },
   {
     invoiceId: "INV-2023-003",
@@ -54,6 +80,10 @@ const bills = [
     date: "2023-06-20",
     amount: "$300.00",
     status: "Paid",
+    items: [
+      { description: "Emergency Room Visit", amount: "$200.00" },
+      { description: "Medication", amount: "$100.00" },
+    ],
   },
   {
     invoiceId: "INV-2023-004",
@@ -65,6 +95,7 @@ const bills = [
     date: "2023-06-22",
     amount: "$75.50",
     status: "Pending",
+    items: [{ description: "Follow-up Visit", amount: "$75.50" }],
   },
   {
     invoiceId: "INV-2023-005",
@@ -76,10 +107,19 @@ const bills = [
     date: "2023-06-25",
     amount: "$500.20",
     status: "Unpaid",
+    items: [
+      { description: "Surgical Procedure", amount: "$450.00" },
+      { description: "Anesthesia", amount: "$50.20" },
+    ],
   },
 ];
 
+type BillStatus = "Paid" | "Unpaid" | "Pending";
+type Bill = typeof initialBills[0];
+
 export default function AdminBillingPage() {
+  const [bills, setBills] = useState(initialBills);
+  
   const getStatusVariant = (status: string) => {
     switch (status) {
       case "Paid":
@@ -92,6 +132,15 @@ export default function AdminBillingPage() {
         return "outline";
     }
   };
+
+  const handleStatusChange = (invoiceId: string, newStatus: BillStatus) => {
+    setBills(bills.map(bill => bill.invoiceId === invoiceId ? {...bill, status: newStatus} : bill));
+  }
+
+  const handleDelete = (invoiceId: string) => {
+    setBills(bills.filter(bill => bill.invoiceId !== invoiceId));
+  }
+
   return (
     <DashboardLayout role="admin">
       <PageHeader title="Billing" description="Manage patient invoices and payments." />
@@ -116,7 +165,8 @@ export default function AdminBillingPage() {
                 <TableHead>Patient</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead className="text-right">Status</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -139,10 +189,41 @@ export default function AdminBillingPage() {
                   </TableCell>
                   <TableCell>{bill.date}</TableCell>
                   <TableCell>{bill.amount}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
                     <Badge variant={getStatusVariant(bill.status)} className={bill.status === 'Pending' ? 'bg-yellow-500 text-black' : ''}>
                       {bill.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Invoice
+                            </DropdownMenuItem>
+                          </DialogTrigger>
+                          <InvoiceModal bill={bill} />
+                        </Dialog>
+                        <DropdownMenuItem onClick={() => handleStatusChange(bill.invoiceId, 'Paid')}>
+                            <Edit className="mr-2 h-4 w-4" /> Mark as Paid
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleStatusChange(bill.invoiceId, 'Unpaid')}>
+                            <Edit className="mr-2 h-4 w-4" /> Mark as Unpaid
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-500" onClick={() => handleDelete(bill.invoiceId)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -151,10 +232,53 @@ export default function AdminBillingPage() {
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
-                Showing <strong>1-5</strong> of <strong>{bills.length}</strong> invoices
+                Showing <strong>1-{bills.length}</strong> of <strong>{bills.length}</strong> invoices
             </div>
         </CardFooter>
       </Card>
     </DashboardLayout>
+  );
+}
+
+function InvoiceModal({ bill }: { bill: Bill }) {
+  return (
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle>Invoice Details</DialogTitle>
+        <DialogDescription>
+          Invoice for {bill.patient.name} - {bill.invoiceId}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="flex justify-between">
+            <span className="text-muted-foreground">Patient:</span>
+            <span>{bill.patient.name}</span>
+        </div>
+        <div className="flex justify-between">
+            <span className="text-muted-foreground">Date:</span>
+            <span>{bill.date}</span>
+        </div>
+        <div className="flex justify-between">
+            <span className="text-muted-foreground">Status:</span>
+            <span>{bill.status}</span>
+        </div>
+        <div className="border-t pt-4 mt-2">
+            <h4 className="font-semibold mb-2">Invoice Items</h4>
+            {bill.items.map((item, index) => (
+                <div key={index} className="flex justify-between text-sm">
+                    <span>{item.description}</span>
+                    <span>{item.amount}</span>
+                </div>
+            ))}
+        </div>
+        <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2">
+            <span>Total Amount</span>
+            <span>{bill.amount}</span>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button type="submit">Print Invoice</Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }

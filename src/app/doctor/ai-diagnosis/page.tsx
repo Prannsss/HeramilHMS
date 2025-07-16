@@ -211,7 +211,7 @@ export default function AiDiagnosisPage() {
     <DashboardLayout role="doctor">
       
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-8">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <div className="md:col-span-1">
               <Card>

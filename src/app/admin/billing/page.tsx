@@ -144,7 +144,7 @@ export default function AdminBillingPage() {
   return (
     <DashboardLayout role="admin">
       
-      <Card>
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle>Patient Invoices</CardTitle>
           <CardDescription>

@@ -205,7 +205,7 @@ export default function DoctorMedicalPage() {
   return (
     <DashboardLayout role="doctor">
       
-      <Card>
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle>Your Patient Records</CardTitle>
           <CardDescription>

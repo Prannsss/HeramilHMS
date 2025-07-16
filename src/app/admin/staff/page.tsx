@@ -163,7 +163,7 @@ export default function AdminStaffPage() {
   return (
     <DashboardLayout role="admin">
       
-      <Card>
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle>Staff Members</CardTitle>
           <CardDescription>A list of all staff members at the hospital.</CardDescription>

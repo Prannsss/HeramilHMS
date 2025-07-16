@@ -287,7 +287,7 @@ export default function AdminPatientsPage() {
   return (
     <DashboardLayout role="admin">
       
-      <Card>
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle>Patient Records</CardTitle>
           <CardDescription>

@@ -103,7 +103,7 @@ export default function ReportsPage() {
   return (
     <DashboardLayout role="admin">
       
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-8 mt-8">
         <Card>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>

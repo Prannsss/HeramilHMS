@@ -131,7 +131,7 @@ export default function AdminInventoryPage() {
   return (
     <DashboardLayout role="admin">
       
-      <Card>
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle>Inventory Status</CardTitle>
           <CardDescription>

@@ -1,3 +1,7 @@
+
+'use client';
+
+import { useState } from "react";
 import { PlusCircle, Search } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
@@ -21,15 +25,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
-const inventory = [
+const initialInventory = [
   {
     id: "INV001",
     name: "Surgical Masks",
     category: "PPE",
     stock: 850,
     maxStock: 1000,
-    status: "In Stock",
   },
   {
     id: "INV002",
@@ -37,7 +51,6 @@ const inventory = [
     category: "Medication",
     stock: 120,
     maxStock: 200,
-    status: "In Stock",
   },
   {
     id: "INV003",
@@ -45,7 +58,6 @@ const inventory = [
     category: "Medical Supplies",
     stock: 45,
     maxStock: 150,
-    status: "Low Stock",
   },
   {
     id: "INV004",
@@ -53,7 +65,6 @@ const inventory = [
     category: "Equipment",
     stock: 10,
     maxStock: 10,
-    status: "In Stock",
   },
   {
     id: "INV005",
@@ -61,11 +72,39 @@ const inventory = [
     category: "Consumables",
     stock: 0,
     maxStock: 50,
-    status: "Out of Stock",
   },
 ];
 
+type InventoryItem = typeof initialInventory[0];
+
+const getStatus = (stock: number, maxStock: number): { text: string; variant: "secondary" | "default" | "destructive", className: string } => {
+    if (stock === 0) return { text: "Out of Stock", variant: "destructive", className: "" };
+    if (stock < maxStock * 0.1) return { text: "Critical Low", variant: "destructive", className: "" };
+    if (stock < maxStock * 0.3) return { text: "Low Stock", variant: "default", className: "bg-yellow-500 text-black" };
+    return { text: "In Stock", variant: "secondary", className: "" };
+};
+
 export default function AdminInventoryPage() {
+  const [inventory, setInventory] = useState(initialInventory);
+
+  const handleAddItem = (newItemData: Omit<InventoryItem, 'id'>) => {
+    const newItem: InventoryItem = {
+      ...newItemData,
+      id: `INV${(inventory.length + 1).toString().padStart(3, '0')}`,
+    };
+    setInventory([...inventory, newItem]);
+  };
+
+  const handleAddStock = (itemId: string, quantity: number) => {
+    setInventory(inventory.map(item => {
+        if (item.id === itemId) {
+            const newStock = Math.min(item.stock + quantity, item.maxStock);
+            return { ...item, stock: newStock };
+        }
+        return item;
+    }));
+  };
+
   return (
     <DashboardLayout role="admin">
       <PageHeader
@@ -83,10 +122,12 @@ export default function AdminInventoryPage() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search inventory..." className="pl-8" />
             </div>
-            <Button className="ml-auto">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Item
-            </Button>
+            <AddItemModal onAddItem={handleAddItem}>
+                <Button className="ml-auto">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Item
+                </Button>
+            </AddItemModal>
           </div>
         </CardHeader>
         <CardContent>
@@ -97,48 +138,151 @@ export default function AdminInventoryPage() {
                 <TableHead>Item ID</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Stock Level</TableHead>
-                <TableHead className="text-right">Status</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventory.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{item.id}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{item.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Progress value={(item.stock / item.maxStock) * 100} className="w-24 h-2" />
-                      <span>{item.stock} / {item.maxStock}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge
-                      variant={
-                        item.status === "In Stock"
-                          ? "secondary"
-                          : item.status === "Low Stock"
-                          ? "default" // A less alarming color
-                          : "destructive"
-                      }
-                      className={item.status === 'Low Stock' ? 'bg-yellow-500 text-black' : ''}
-                    >
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {inventory.map((item) => {
+                const status = getStatus(item.stock, item.maxStock);
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell>{item.id}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{item.category}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={(item.stock / item.maxStock) * 100} className="w-24 h-2" />
+                        <span>{item.stock} / {item.maxStock}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={status.variant}
+                        className={status.className}
+                      >
+                        {status.text}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <AddStockModal item={item} onAddStock={handleAddStock}>
+                            <Button size="sm" variant="outline">Add Stock</Button>
+                        </AddStockModal>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
-                Showing <strong>1-5</strong> of <strong>{inventory.length}</strong> items
+                Showing <strong>1-{inventory.length}</strong> of <strong>{inventory.length}</strong> items
             </div>
         </CardFooter>
       </Card>
     </DashboardLayout>
   );
 }
+
+function AddItemModal({ children, onAddItem }: { children: React.ReactNode, onAddItem: (item: Omit<InventoryItem, 'id'>) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [newItem, setNewItem] = useState({ name: '', category: '', stock: 0, maxStock: 100 });
+
+  const handleSubmit = () => {
+    onAddItem(newItem);
+    setIsOpen(false);
+    setNewItem({ name: '', category: '', stock: 0, maxStock: 100 });
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add New Inventory Item</DialogTitle>
+          <DialogDescription>
+            Fill in the details for the new item.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">Name</Label>
+            <Input id="name" value={newItem.name} onChange={(e) => setNewItem({...newItem, name: e.target.value})} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="category" className="text-right">Category</Label>
+            <Input id="category" value={newItem.category} onChange={(e) => setNewItem({...newItem, category: e.target.value})} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="stock" className="text-right">Initial Stock</Label>
+            <Input id="stock" type="number" value={newItem.stock} onChange={(e) => setNewItem({...newItem, stock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="maxStock" className="text-right">Max Stock</Label>
+            <Input id="maxStock" type="number" value={newItem.maxStock} onChange={(e) => setNewItem({...newItem, maxStock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
+          </div>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button onClick={handleSubmit}>Save Item</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+function AddStockModal({ children, item, onAddStock }: { children: React.ReactNode, item: InventoryItem, onAddStock: (itemId: string, quantity: number) => void }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [quantity, setQuantity] = useState(1);
+
+    const handleSubmit = () => {
+        onAddStock(item.id, quantity);
+        setIsOpen(false);
+        setQuantity(1);
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Add Stock for {item.name}</DialogTitle>
+                    <DialogDescription>
+                        Current stock: {item.stock}/{item.maxStock}. Enter the quantity to add.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="quantity" className="text-right">
+                            Quantity
+                        </Label>
+                        <Input 
+                            id="quantity" 
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(parseInt(e.target.value, 10) || 0)}
+                            className="col-span-3"
+                            min="1"
+                            max={item.maxStock - item.stock}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleSubmit}>Add to Stock</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+    

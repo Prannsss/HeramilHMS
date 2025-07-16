@@ -275,9 +275,6 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                 </div>
             </div>
         </div>
-        <DialogFooter>
-            <Button onClick={() => onOpenChange(false)}>Close</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -333,10 +330,6 @@ export default function AdminPatientsPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button className="ml-auto">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Patient
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -363,5 +356,3 @@ export default function AdminPatientsPage() {
     </DashboardLayout>
   );
 }
-
-    

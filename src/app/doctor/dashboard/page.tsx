@@ -136,7 +136,7 @@ export default function DoctorDashboardPage() {
         description="Manage your appointments and patient records."
       />
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Upcoming Appointments</CardTitle>
@@ -174,7 +174,7 @@ export default function DoctorDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="mt-6">
+          <Card>
             <CardHeader>
               <CardTitle>Your Active Patients</CardTitle>
               <CardDescription>
@@ -225,14 +225,14 @@ export default function DoctorDashboardPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card>
+          <Card className="flex h-full flex-col">
             <CardHeader>
               <CardTitle>Patient Information</CardTitle>
               <CardDescription>Details for the selected patient.</CardDescription>
             </CardHeader>
             {selectedPatient ? (
                 <>
-                    <CardContent className="space-y-4">
+                    <CardContent className="flex-1 flex flex-col space-y-4">
                         <div className="flex justify-center">
                             <Avatar className="h-24 w-24">
                                 <AvatarImage src={selectedPatient.avatar} alt={selectedPatient.name} data-ai-hint="patient avatar" />
@@ -257,9 +257,9 @@ export default function DoctorDashboardPage() {
                             <Label htmlFor="contact">Contact</Label>
                             <Input id="contact" value={selectedPatient.email} readOnly />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 flex-1 flex flex-col">
                             <Label htmlFor="notes">Diagnosis Notes</Label>
-                            <Textarea id="notes" placeholder="Enter diagnosis notes..."></Textarea>
+                            <Textarea id="notes" placeholder="Enter diagnosis notes..." className="flex-1" />
                         </div>
                     </CardContent>
                     <CardFooter>
@@ -267,7 +267,7 @@ export default function DoctorDashboardPage() {
                     </CardFooter>
                 </>
             ) : (
-                <CardContent>
+                <CardContent className="flex flex-1 items-center justify-center">
                     <p className="text-muted-foreground text-center">Select a patient to view their details.</p>
                 </CardContent>
             )}

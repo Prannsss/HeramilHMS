@@ -116,6 +116,13 @@ const initialPatients = [
 
 type Patient = typeof initialPatients[0];
 
+const getInitials = (name: string) => {
+    const names = name.split(' ');
+    const firstName = names[0] ?? '';
+    const lastName = names.length > 1 ? names[names.length - 1] : '';
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+};
+
 export default function DoctorDashboardPage() {
   const [patients, setPatients] = useState(initialPatients.filter(p => p.status === 'Active'));
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(patients[0]);
@@ -218,7 +225,7 @@ export default function DoctorDashboardPage() {
                     <CardContent className="flex-1 flex flex-col space-y-4">
                         <div className="flex justify-center">
                             <Avatar className="h-24 w-24">
-                                <AvatarFallback></AvatarFallback>
+                                <AvatarFallback>{getInitials(selectedPatient.name)}</AvatarFallback>
                             </Avatar>
                         </div>
                         <div className="space-y-1">

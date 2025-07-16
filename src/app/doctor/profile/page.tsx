@@ -44,6 +44,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
 import { getCroppedImg } from '@/lib/cropImage';
 import { useUserStore } from '@/hooks/use-user-store';
+import { Label } from '@/components/ui/label';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),

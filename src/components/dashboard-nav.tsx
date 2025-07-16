@@ -46,7 +46,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
                     asChild
                     size="lg"
                     className={cn(
-                        "w-full justify-start text-lg text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        "w-full justify-center text-lg text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     )}
                 >
                     <Link href="/">
@@ -68,7 +68,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
             size="lg"
             isActive={pathname.startsWith(item.href) && (item.href !== '/admin/dashboard' && item.href !== '/doctor/dashboard' ? pathname.length > item.href.length : pathname === item.href)}
             className={cn(
-              "w-full justify-start text-lg",
+              "w-full justify-center text-lg",
               pathname.startsWith(item.href) && (item.href !== '/admin/dashboard' && item.href !== '/doctor/dashboard' ? pathname.length > item.href.length : pathname === item.href) && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
               "hover:bg-primary/90 hover:text-primary-foreground"
             )}

@@ -31,6 +31,7 @@ type Appointment = {
     name: string;
     email: string;
     mobile: string;
+    address: string;
   };
   doctor: string;
   date: string;
@@ -42,7 +43,7 @@ type Appointment = {
 const initialAppointments: Appointment[] = [
     {
         id: 'APP001',
-        patient: { name: 'Liam Johnson', email: 'liam@email.com', mobile: '555-0101' },
+        patient: { name: 'Liam Johnson', email: 'liam@email.com', mobile: '555-0101', address: "123 Maple St, Springfield, IL" },
         doctor: 'Dr. Evelyn Reed',
         date: '2024-08-15',
         time: '09:00 AM',
@@ -51,7 +52,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP002',
-        patient: { name: 'Emma Brown', email: 'emma@email.com', mobile: '555-0102' },
+        patient: { name: 'Emma Brown', email: 'emma@email.com', mobile: '555-0102', address: "456 Oak Ave, Metropolis, CA" },
         doctor: 'Dr. Kenji Tanaka',
         date: '2024-08-15',
         time: '10:30 AM',
@@ -60,7 +61,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP003',
-        patient: { name: 'Noah Williams', email: 'noah@email.com', mobile: '555-0103' },
+        patient: { name: 'Noah Williams', email: 'noah@email.com', mobile: '555-0103', address: "789 Pine Ln, Gotham, NY" },
         doctor: 'Dr. Evelyn Reed',
         date: '2024-08-14',
         time: '11:15 AM',
@@ -69,7 +70,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP004',
-        patient: { name: 'Olivia Jones', email: 'olivia@email.com', mobile: '555-0104' },
+        patient: { name: 'Olivia Jones', email: 'olivia@email.com', mobile: '555-0104', address: "101 Birch Rd, Star City, TX" },
         doctor: 'Dr. Mark O\'Connell',
         date: '2024-08-16',
         time: '02:00 PM',
@@ -78,7 +79,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP005',
-        patient: { name: 'James Garcia', email: 'james@email.com', mobile: '555-0105' },
+        patient: { name: 'James Garcia', email: 'james@email.com', mobile: '555-0105', address: "212 Cedar Blvd, Central City, MO" },
         doctor: 'Dr. Kenji Tanaka',
         date: '2024-08-14',
         time: '03:30 PM',
@@ -87,7 +88,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP006',
-        patient: { name: 'Sophia Miller', email: 'sophia@email.com', mobile: '555-0106' },
+        patient: { name: 'Sophia Miller', email: 'sophia@email.com', mobile: '555-0106', address: "313 Spruce Way, Coast City, FL" },
         doctor: 'Dr. Evelyn Reed',
         date: '2024-08-13',
         time: '01:00 PM',

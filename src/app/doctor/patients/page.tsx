@@ -81,6 +81,7 @@ const initialPatients = [
     name: "Amelia Johnson",
     email: "amelia.j@email.com",
     mobile: "555-0101",
+    address: "123 Maple St, Springfield, IL",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
     status: "Active",
@@ -102,6 +103,7 @@ const initialPatients = [
     name: "Benjamin Carter",
     email: "ben.c@email.com",
     mobile: "555-0102",
+    address: "456 Oak Ave, Metropolis, CA",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
     status: "Active",
@@ -120,6 +122,7 @@ const initialPatients = [
     name: "Charlotte Davis",
     email: "charlotte.d@email.com",
     mobile: "555-0103",
+    address: "789 Pine Ln, Gotham, NY",
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
     status: "Discharged",
@@ -138,6 +141,7 @@ const initialPatients = [
     name: "Daniel Evans",
     email: "daniel.e@email.com",
     mobile: "555-0104",
+    address: "101 Birch Rd, Star City, TX",
     dob: "2001-01-30",
     lastVisit: "2023-06-18",
     status: "Active",
@@ -156,6 +160,7 @@ const initialPatients = [
     name: "Evelyn Foster",
     email: "evelyn.f@email.com",
     mobile: "555-0105",
+    address: "212 Cedar Blvd, Central City, MO",
     dob: "1999-07-19",
     lastVisit: "2023-06-01",
     status: "Active",
@@ -291,6 +296,10 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                         <p>{patient.dateOfDischarge}</p>
                     </div>
                 )}
+                 <div className="col-span-2">
+                    <p className="font-medium text-muted-foreground">Address</p>
+                    <p>{patient.address}</p>
+                </div>
                  <div className="col-span-2">
                     <p className="font-medium text-muted-foreground">Reason for Admission</p>
                     <p>{patient.reasonForAdmission}</p>

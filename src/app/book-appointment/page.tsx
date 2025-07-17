@@ -54,6 +54,9 @@ const appointmentFormSchema = z.object({
   mobile: z.string().min(10, {
     message: 'Please enter a valid mobile number.',
   }),
+  address: z.string().min(5, {
+    message: 'Please enter a valid address.',
+  }),
   date: z.date({
     required_error: 'An appointment date is required.',
   }),
@@ -87,6 +90,7 @@ export default function BookAppointmentPage() {
       name: '',
       email: '',
       mobile: '',
+      address: '',
       reason: '',
       department: '',
       doctorId: '',
@@ -200,6 +204,19 @@ export default function BookAppointmentPage() {
                     )}
                     />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="123 Main St, Anytown, USA" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                     control={form.control}

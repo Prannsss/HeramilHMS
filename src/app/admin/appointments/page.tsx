@@ -30,6 +30,7 @@ type Appointment = {
   patient: {
     name: string;
     email: string;
+    mobile: string;
   };
   doctor: string;
   date: string;
@@ -41,7 +42,7 @@ type Appointment = {
 const initialAppointments: Appointment[] = [
     {
         id: 'APP001',
-        patient: { name: 'Liam Johnson', email: 'liam@email.com' },
+        patient: { name: 'Liam Johnson', email: 'liam@email.com', mobile: '555-0101' },
         doctor: 'Dr. Evelyn Reed',
         date: '2024-08-15',
         time: '09:00 AM',
@@ -50,7 +51,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP002',
-        patient: { name: 'Emma Brown', email: 'emma@email.com' },
+        patient: { name: 'Emma Brown', email: 'emma@email.com', mobile: '555-0102' },
         doctor: 'Dr. Kenji Tanaka',
         date: '2024-08-15',
         time: '10:30 AM',
@@ -59,7 +60,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP003',
-        patient: { name: 'Noah Williams', email: 'noah@email.com' },
+        patient: { name: 'Noah Williams', email: 'noah@email.com', mobile: '555-0103' },
         doctor: 'Dr. Evelyn Reed',
         date: '2024-08-14',
         time: '11:15 AM',
@@ -68,7 +69,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP004',
-        patient: { name: 'Olivia Jones', email: 'olivia@email.com' },
+        patient: { name: 'Olivia Jones', email: 'olivia@email.com', mobile: '555-0104' },
         doctor: 'Dr. Mark O\'Connell',
         date: '2024-08-16',
         time: '02:00 PM',
@@ -77,7 +78,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP005',
-        patient: { name: 'James Garcia', email: 'james@email.com' },
+        patient: { name: 'James Garcia', email: 'james@email.com', mobile: '555-0105' },
         doctor: 'Dr. Kenji Tanaka',
         date: '2024-08-14',
         time: '03:30 PM',
@@ -86,7 +87,7 @@ const initialAppointments: Appointment[] = [
     },
     {
         id: 'APP006',
-        patient: { name: 'Sophia Miller', email: 'sophia@email.com' },
+        patient: { name: 'Sophia Miller', email: 'sophia@email.com', mobile: '555-0106' },
         doctor: 'Dr. Evelyn Reed',
         date: '2024-08-13',
         time: '01:00 PM',
@@ -123,6 +124,9 @@ function AppointmentTable({
               <div className="font-medium">{appt.patient.name}</div>
               <div className="text-sm text-muted-foreground">
                 {appt.patient.email}
+              </div>
+               <div className="text-sm text-muted-foreground">
+                {appt.patient.mobile}
               </div>
             </TableCell>
             <TableCell>{appt.doctor}</TableCell>

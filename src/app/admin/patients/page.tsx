@@ -50,6 +50,7 @@ const initialPatients = [
     id: "PAT001",
     name: "Amelia Johnson",
     email: "amelia.j@email.com",
+    mobile: "555-0101",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
     status: "Active",
@@ -70,6 +71,7 @@ const initialPatients = [
     id: "PAT002",
     name: "Benjamin Carter",
     email: "ben.c@email.com",
+    mobile: "555-0102",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
     status: "Active",
@@ -87,6 +89,7 @@ const initialPatients = [
     id: "PAT003",
     name: "Charlotte Davis",
     email: "charlotte.d@email.com",
+    mobile: "555-0103",
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
     status: "Discharged",
@@ -104,6 +107,7 @@ const initialPatients = [
     id: "PAT004",
     name: "Daniel Evans",
     email: "daniel.e@email.com",
+    mobile: "555-0104",
     dob: "2001-01-30",
     lastVisit: "2023-06-18",
     status: "Active",
@@ -121,6 +125,7 @@ const initialPatients = [
     id: "PAT005",
     name: "Evelyn Foster",
     email: "evelyn.f@email.com",
+    mobile: "555-0105",
     dob: "1999-07-19",
     lastVisit: "2023-06-01",
     status: "Active",
@@ -159,6 +164,9 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
                 <div className="font-medium">{patient.name}</div>
                 <div className="text-sm text-muted-foreground">
                   {patient.email}
+                </div>
+                 <div className="text-sm text-muted-foreground">
+                  {patient.mobile}
                 </div>
               </div>
             </TableCell>
@@ -215,6 +223,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                 <div>
                     <h3 className="text-xl font-semibold">{patient.name}</h3>
                     <p className="text-sm text-muted-foreground">{patient.email}</p>
+                    <p className="text-sm text-muted-foreground">{patient.mobile}</p>
                     <p className="text-sm text-muted-foreground">{patient.id}</p>
                 </div>
             </div>

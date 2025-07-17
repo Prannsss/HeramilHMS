@@ -51,6 +51,9 @@ const appointmentFormSchema = z.object({
   email: z.string().email({
     message: 'Please enter a valid email address.',
   }),
+  mobile: z.string().min(10, {
+    message: 'Please enter a valid mobile number.',
+  }),
   date: z.date({
     required_error: 'An appointment date is required.',
   }),
@@ -83,6 +86,7 @@ export default function BookAppointmentPage() {
     defaultValues: {
       name: '',
       email: '',
+      mobile: '',
       reason: '',
       department: '',
       doctorId: '',
@@ -168,19 +172,34 @@ export default function BookAppointmentPage() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                            <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="mobile"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Mobile Number</FormLabel>
+                        <FormControl>
+                            <Input placeholder="555-123-4567" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                     control={form.control}

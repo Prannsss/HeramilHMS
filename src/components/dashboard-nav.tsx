@@ -28,6 +28,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
     { href: "/admin/staff", label: "Staff" },
     { href: "/admin/inventory", label: "Inventory" },
     { href: "/admin/billing", label: "Billing" },
+    { href: "/admin/rooms", label: "Rooms" },
   ];
 
   const doctorNavItems = [
@@ -76,6 +77,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
             )}
           >
             <Link href={item.href}>
+              {item.icon && <item.icon className="mr-2 h-5 w-5" />}
               {item.label}
             </Link>
           </SidebarMenuButton>

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { BedDouble } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type RoomStatus = 'Vacant' | 'Occupied';
 
@@ -92,45 +93,54 @@ export default function RoomsPage() {
         </Card>
       </div>
 
-      <div className="space-y-8">
-        {floors.map((floor, floorIndex) => (
-          <Card key={floor.floor}>
-            <CardHeader>
-              <CardTitle>Floor {floor.floor}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-5 md:grid-cols-10 gap-4">
-                {floor.rooms.map((room, roomIndex) => (
-                  <div
-                    key={room.id}
-                    onClick={() => handleRoomClick(floorIndex, roomIndex)}
-                    className={cn(
-                      'p-4 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors',
-                      room.status === 'Vacant'
-                        ? 'bg-green-100 dark:bg-green-900/50 hover:bg-green-200'
-                        : 'bg-red-100 dark:bg-red-900/50 hover:bg-red-200'
-                    )}
-                  >
-                    <div className="text-lg font-bold text-center">
-                      {floor.floor}{String(roomIndex + 1).padStart(2, '0')}
-                    </div>
-                    <Badge
-                      className={cn(
-                        'mt-2',
-                        room.status === 'Vacant'
-                          ? 'bg-green-600'
-                          : 'bg-red-600'
-                      )}
-                    >
-                      {room.status}
-                    </Badge>
-                  </div>
+      <Card>
+        <CardHeader>
+            <CardTitle>Room Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <Tabs defaultValue="floor-1">
+                <TabsList>
+                    {floors.map((floor) => (
+                        <TabsTrigger key={floor.floor} value={`floor-${floor.floor}`}>
+                            Floor {floor.floor}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+                 {floors.map((floor, floorIndex) => (
+                    <TabsContent key={floor.floor} value={`floor-${floor.floor}`}>
+                        <div className="grid grid-cols-5 md:grid-cols-10 gap-4 pt-4">
+                            {floor.rooms.map((room, roomIndex) => (
+                            <div
+                                key={room.id}
+                                onClick={() => handleRoomClick(floorIndex, roomIndex)}
+                                className={cn(
+                                'p-4 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors',
+                                room.status === 'Vacant'
+                                    ? 'bg-green-100 dark:bg-green-900/50 hover:bg-green-200'
+                                    : 'bg-red-100 dark:bg-red-900/50 hover:bg-red-200'
+                                )}
+                            >
+                                <div className="text-lg font-bold text-center">
+                                {floor.floor}{String(roomIndex + 1).padStart(2, '0')}
+                                </div>
+                                <Badge
+                                className={cn(
+                                    'mt-2',
+                                    room.status === 'Vacant'
+                                    ? 'bg-green-600'
+                                    : 'bg-red-600'
+                                )}
+                                >
+                                {room.status}
+                                </Badge>
+                            </div>
+                            ))}
+                        </div>
+                    </TabsContent>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </Tabs>
+        </CardContent>
+      </Card>
     </DashboardLayout>
   );
 }

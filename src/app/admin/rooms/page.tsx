@@ -94,10 +94,7 @@ export default function RoomsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-            <CardTitle>Room Status</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
             <Tabs defaultValue="floor-1">
                 <TabsList>
                     {floors.map((floor) => (

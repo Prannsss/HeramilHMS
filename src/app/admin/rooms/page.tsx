@@ -6,15 +6,33 @@ import DashboardLayout from '@/components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { BedDouble } from 'lucide-react';
+import { BedDouble, LogOut } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 
 type RoomStatus = 'Vacant' | 'Occupied';
+
+interface Patient {
+  id: string;
+  name: string;
+  dateOfAdmission: string;
+  reasonForAdmission: string;
+}
 
 interface Room {
   id: number;
   status: RoomStatus;
+  occupant?: Patient;
 }
 
 interface Floor {
@@ -22,14 +40,67 @@ interface Floor {
   rooms: Room[];
 }
 
+const initialPatients: Patient[] = [
+  {
+    id: "PAT001",
+    name: "Amelia Johnson",
+    dateOfAdmission: "2023-06-12",
+    reasonForAdmission: "Routine Check-up",
+  },
+  {
+    id: "PAT002",
+    name: "Benjamin Carter",
+    dateOfAdmission: "2023-06-08",
+    reasonForAdmission: "Fractured Arm",
+  },
+  {
+    id: "PAT004",
+    name: "Daniel Evans",
+    dateOfAdmission: "2023-06-18",
+    reasonForAdmission: "Allergic Reaction",
+  },
+  {
+    id: "PAT005",
+    name: "Evelyn Foster",
+    dateOfAdmission: "2023-05-28",
+    reasonForAdmission: "Migraine Treatment",
+  },
+  {
+    id: "PAT006",
+    name: "Liam Johnson",
+    dateOfAdmission: "2023-07-01",
+    reasonForAdmission: "Follow-up",
+  },
+  {
+    id: "PAT007",
+    name: "Emma Brown",
+    dateOfAdmission: "2023-07-02",
+    reasonForAdmission: "Annual Check-up",
+  },
+  {
+    id: "PAT008",
+    name: "Noah Williams",
+    dateOfAdmission: "2023-07-03",
+    reasonForAdmission: "Consultation",
+  },
+];
+
 const generateInitialState = (): Floor[] => {
   const floors = [];
+  let patientIndex = 0;
   for (let i = 1; i <= 3; i++) {
-    const rooms = [];
+    const rooms: Room[] = [];
     for (let j = 1; j <= 20; j++) {
+      const isOccupied = Math.random() > 0.6;
+      let occupant: Patient | undefined = undefined;
+      if (isOccupied && patientIndex < initialPatients.length) {
+        occupant = initialPatients[patientIndex % initialPatients.length];
+        patientIndex++;
+      }
       rooms.push({
         id: (i - 1) * 20 + j,
-        status: Math.random() > 0.6 ? 'Occupied' : 'Vacant',
+        status: isOccupied && occupant ? 'Occupied' : 'Vacant',
+        occupant: occupant,
       });
     }
     floors.push({ floor: i, rooms });
@@ -37,14 +108,89 @@ const generateInitialState = (): Floor[] => {
   return floors;
 };
 
+function OccupantDetailsModal({
+  room,
+  isOpen,
+  onOpenChange,
+  onVacate,
+}: {
+  room: Room | null;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  onVacate: (roomId: number) => void;
+}) {
+  if (!isOpen || !room || !room.occupant) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Occupant Details - Room {room.id}</DialogTitle>
+          <DialogDescription>
+            Information for the patient occupying this room.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4 text-sm">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <div>
+                    <p className="font-medium text-muted-foreground">Patient Name</p>
+                    <p>{room.occupant.name}</p>
+                </div>
+                <div>
+                    <p className="font-medium text-muted-foreground">Patient ID</p>
+                    <p>{room.occupant.id}</p>
+                </div>
+                <div>
+                    <p className="font-medium text-muted-foreground">Date of Admission</p>
+                    <p>{room.occupant.dateOfAdmission}</p>
+                </div>
+                <div className="col-span-2">
+                    <p className="font-medium text-muted-foreground">Reason for Admission</p>
+                    <p>{room.occupant.reasonForAdmission}</p>
+                </div>
+            </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+          <Button variant="destructive" onClick={() => {
+            onVacate(room.id);
+            onOpenChange(false);
+          }}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Vacate Room
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 export default function RoomsPage() {
   const [floors, setFloors] = useState<Floor[]>(generateInitialState);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleRoomClick = (floorIndex: number, roomIndex: number) => {
-    const newFloors = [...floors];
-    const room = newFloors[floorIndex].rooms[roomIndex];
-    room.status = room.status === 'Vacant' ? 'Occupied' : 'Vacant';
-    setFloors(newFloors);
+  const handleRoomClick = (room: Room) => {
+    if (room.status === 'Occupied') {
+      setSelectedRoom(room);
+      setIsModalOpen(true);
+    } else {
+      // Logic to make a vacant room occupied could be added here
+      // For now, we'll just log it.
+      console.log(`Room ${room.id} is vacant. An occupied room must be selected to see details.`);
+    }
+  };
+
+  const handleVacateRoom = (roomId: number) => {
+    setFloors(prevFloors => 
+        prevFloors.map(floor => ({
+            ...floor,
+            rooms: floor.rooms.map(room => 
+                room.id === roomId ? { ...room, status: 'Vacant', occupant: undefined } : room
+            )
+        }))
+    );
   };
 
   const getOccupancyStats = () => {
@@ -109,7 +255,7 @@ export default function RoomsPage() {
                             {floor.rooms.map((room, roomIndex) => (
                             <div
                                 key={room.id}
-                                onClick={() => handleRoomClick(floorIndex, roomIndex)}
+                                onClick={() => handleRoomClick(room)}
                                 className={cn(
                                 'p-4 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors',
                                 room.status === 'Vacant'
@@ -138,6 +284,12 @@ export default function RoomsPage() {
             </Tabs>
         </CardContent>
       </Card>
+      <OccupantDetailsModal 
+        room={selectedRoom}
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onVacate={handleVacateRoom}
+      />
     </DashboardLayout>
   );
 }

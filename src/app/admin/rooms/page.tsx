@@ -108,7 +108,7 @@ export default function RoomsPage() {
                 </TabsList>
                  {floors.map((floor, floorIndex) => (
                     <TabsContent key={floor.floor} value={`floor-${floor.floor}`}>
-                        <div className="grid grid-cols-5 md:grid-cols-10 gap-4 pt-4">
+                        <div className="grid grid-cols-5 gap-4 pt-4">
                             {floor.rooms.map((room, roomIndex) => (
                             <div
                                 key={room.id}

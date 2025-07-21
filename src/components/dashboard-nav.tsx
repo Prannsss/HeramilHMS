@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, BedDouble } from "lucide-react";
+import { LogOut } from "lucide-react";
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -28,7 +28,7 @@ export function DashboardNav({ role, isLogout = false }: DashboardNavProps) {
     { href: "/admin/staff", label: "Staff" },
     { href: "/admin/inventory", label: "Inventory" },
     { href: "/admin/billing", label: "Billing" },
-    { href: "/admin/rooms", label: "Rooms", icon: BedDouble },
+    { href: "/admin/rooms", label: "Rooms" },
   ];
 
   const doctorNavItems = [

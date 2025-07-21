@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -68,21 +68,130 @@ const appointmentFormSchema = z.object({
   }),
 });
 
-const doctors = [
-    { id: '1', name: 'Dr. Evelyn Reed', department: 'Cardiology', availableTimes: ['09:00 AM', '11:00 AM', '02:00 PM'] },
-    { id: '2', name: 'Dr. Kenji Tanaka', department: 'Pediatrics', availableTimes: ['10:00 AM', '01:00 PM', '03:00 PM'] },
-    { id: '3', name: 'Dr. Mark O\'Connell', department: 'Radiology', availableTimes: ['09:30 AM', '11:30 AM', '04:00 PM'] },
-    { id: '4', name: 'Dr. Lee', department: 'Cardiology', availableTimes: ['10:00 AM', '12:00 PM', '03:00 PM'] },
-    { id: '5', name: 'Dr. Davis', department: 'Pediatrics', availableTimes: ['09:00 AM', '11:00 AM', '02:30 PM'] },
-    { id: '6', name: 'Dr. Wilson', department: 'Radiology', availableTimes: ['08:30 AM', '10:30 AM', '01:30 PM'] },
-];
+interface Doctor {
+  id: string;
+  name: string;
+  department: string;
+  specialization: string;
+  availableTimes: string[];
+}
 
-const departments = [...new Set(doctors.map(d => d.department))];
+interface DoctorsData {
+  doctors: Doctor[];
+  departments: string[];
+  doctors_by_department: Record<string, Doctor[]>;
+}
 
 export default function BookAppointmentPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [doctorsData, setDoctorsData] = useState<DoctorsData>({
+    doctors: [],
+    departments: [],
+    doctors_by_department: {}
+  });
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
   const { toast } = useToast();
+
+  // Fetch doctors and departments on component mount
+  useEffect(() => {
+    fetchDoctorsData();
+  }, []);
+
+  const fetchDoctorsData = async () => {
+    try {
+      setLoadingDoctors(true);
+      
+      console.log('Fetching doctors from API...');
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/doctors-schedule.php');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const responseText = await response.text();
+      console.log('Raw response:', responseText);
+      
+      // Check if response starts with HTML/PHP error
+      if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<?php')) {
+        console.error('Server returned HTML/PHP instead of JSON:', responseText);
+        
+        // Fallback to hardcoded data
+        const fallbackData = {
+          doctors: [
+            { id: '1', name: 'Dr. Jayson Ado', department: 'General Medicine', specialization: 'General Medicine', availableTimes: ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM'] },
+            { id: '2', name: 'Dr. Juan Tamad', department: 'Cardiology', specialization: 'Cardiologist', availableTimes: ['09:00 AM', '11:00 AM', '02:00 PM', '03:00 PM'] },
+            { id: '3', name: 'Nurse Joy Garcia', department: 'Emergency', specialization: 'Registered Nurse', availableTimes: ['09:00 AM', '10:00 AM', '01:00 PM', '04:00 PM'] },
+            { id: '4', name: 'Dr. Kenji Tanaka', department: 'Pediatrics', specialization: 'Pediatrician', availableTimes: ['10:00 AM', '11:00 AM', '01:00 PM', '03:00 PM'] }
+          ],
+          departments: ['General Medicine', 'Cardiology', 'Emergency', 'Pediatrics'],
+          doctors_by_department: {
+            'General Medicine': [{ id: '1', name: 'Dr. Jayson Ado', department: 'General Medicine', specialization: 'General Medicine', availableTimes: ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM'] }],
+            'Cardiology': [{ id: '2', name: 'Dr. Juan Tamad', department: 'Cardiology', specialization: 'Cardiologist', availableTimes: ['09:00 AM', '11:00 AM', '02:00 PM', '03:00 PM'] }],
+            'Emergency': [{ id: '3', name: 'Nurse Joy Garcia', department: 'Emergency', specialization: 'Registered Nurse', availableTimes: ['09:00 AM', '10:00 AM', '01:00 PM', '04:00 PM'] }],
+            'Pediatrics': [{ id: '4', name: 'Dr. Kenji Tanaka', department: 'Pediatrics', specialization: 'Pediatrician', availableTimes: ['10:00 AM', '11:00 AM', '01:00 PM', '03:00 PM'] }]
+          }
+        };
+        
+        setDoctorsData(fallbackData);
+        
+        toast({
+          title: 'Using Sample Data',
+          description: 'Unable to connect to database. Using sample data. Please ensure XAMPP is running.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      try {
+        const result = JSON.parse(responseText);
+        console.log('Parsed result:', result);
+        
+        if (result.status === 'success') {
+          setDoctorsData(result.data);
+          toast({
+            title: 'Success',
+            description: 'Doctors data loaded from database successfully.',
+          });
+        } else {
+          throw new Error(result.message || 'Unknown error from server');
+        }
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Server returned invalid JSON response');
+      }
+      
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      
+      // Fallback to hardcoded data on any error
+      const fallbackData = {
+        doctors: [
+          { id: '1', name: 'Dr. Jayson Ado', department: 'General Medicine', specialization: 'General Medicine', availableTimes: ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM'] },
+          { id: '2', name: 'Dr. Juan Tamad', department: 'Cardiology', specialization: 'Cardiologist', availableTimes: ['09:00 AM', '11:00 AM', '02:00 PM', '03:00 PM'] },
+          { id: '3', name: 'Nurse Joy Garcia', department: 'Emergency', specialization: 'Registered Nurse', availableTimes: ['09:00 AM', '10:00 AM', '01:00 PM', '04:00 PM'] },
+          { id: '4', name: 'Dr. Kenji Tanaka', department: 'Pediatrics', specialization: 'Pediatrician', availableTimes: ['10:00 AM', '11:00 AM', '01:00 PM', '03:00 PM'] }
+        ],
+        departments: ['General Medicine', 'Cardiology', 'Emergency', 'Pediatrics'],
+        doctors_by_department: {
+          'General Medicine': [{ id: '1', name: 'Dr. Jayson Ado', department: 'General Medicine', specialization: 'General Medicine', availableTimes: ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM'] }],
+          'Cardiology': [{ id: '2', name: 'Dr. Juan Tamad', department: 'Cardiology', specialization: 'Cardiologist', availableTimes: ['09:00 AM', '11:00 AM', '02:00 PM', '03:00 PM'] }],
+          'Emergency': [{ id: '3', name: 'Nurse Joy Garcia', department: 'Emergency', specialization: 'Registered Nurse', availableTimes: ['09:00 AM', '10:00 AM', '01:00 PM', '04:00 PM'] }],
+          'Pediatrics': [{ id: '4', name: 'Dr. Kenji Tanaka', department: 'Pediatrics', specialization: 'Pediatrician', availableTimes: ['10:00 AM', '11:00 AM', '01:00 PM', '03:00 PM'] }]
+        }
+      };
+      
+      setDoctorsData(fallbackData);
+      
+      toast({
+        title: 'Connection Failed',
+        description: 'Using sample data. Please check if XAMPP is running and try refreshing.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingDoctors(false);
+    }
+  };
 
   const form = useForm<z.infer<typeof appointmentFormSchema>>({
     resolver: zodResolver(appointmentFormSchema),
@@ -101,24 +210,91 @@ export default function BookAppointmentPage() {
   const selectedDepartment = form.watch('department');
   const selectedDoctorId = form.watch('doctorId');
 
-  const filteredDoctors = doctors.filter(
-    (doctor) => doctor.department === selectedDepartment
-  );
+  const filteredDoctors = doctorsData.doctors_by_department[selectedDepartment] || [];
 
-  const selectedDoctor = doctors.find(
+  const selectedDoctor = doctorsData.doctors.find(
     (doctor) => doctor.id === selectedDoctorId
   );
 
   async function onSubmit(values: z.infer<typeof appointmentFormSchema>) {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    setIsSubmitted(true);
-    toast({
-      title: 'Appointment Request Received!',
-      description: 'We have successfully received your appointment please verify your appointment through an automated email that will be sent to you.',
-    });
-    console.log(values);
+    
+    try {
+      // Format the data for the API
+      const appointmentData = {
+        name: values.name,
+        email: values.email,
+        mobile: values.mobile,
+        address: values.address,
+        date: format(values.date, 'yyyy-MM-dd'),
+        time: values.time,
+        doctorId: values.doctorId,
+        reason: values.reason,
+      };
+
+      console.log('Submitting appointment:', appointmentData);
+
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/appointments.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(appointmentData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseText = await response.text();
+      console.log('Appointment response:', responseText);
+
+      // Check if response is HTML/PHP error
+      if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<?php')) {
+        console.warn('Backend not available, simulating success...');
+        
+        // Simulate successful submission when backend is not available
+        setIsSubmitted(true);
+        toast({
+          title: 'Appointment Request Received! (Simulated)',
+          description: 'Your appointment has been submitted. Note: Backend is not available, so this is simulated. Please ensure XAMPP is running for real submissions.',
+        });
+        return;
+      }
+
+      try {
+        const result = JSON.parse(responseText);
+        
+        if (result.status === 'success') {
+          setIsSubmitted(true);
+          toast({
+            title: 'Appointment Request Received!',
+            description: 'We have successfully received your appointment. Please verify your appointment through an automated email that will be sent to you.',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: result.message || 'Failed to submit appointment. Please try again.',
+            variant: 'destructive',
+          });
+        }
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        throw new Error('Server returned invalid JSON response');
+      }
+
+    } catch (error) {
+      console.error('Error submitting appointment:', error);
+      
+      // Show a user-friendly error message
+      toast({
+        title: 'Submission Failed',
+        description: 'Unable to submit appointment. Please check your connection and ensure XAMPP is running.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
   
   if (isSubmitted) {
@@ -153,14 +329,25 @@ export default function BookAppointmentPage() {
         <header className="mb-8 flex flex-col items-center">
           <Logo />
         </header>
-        <Card>
-          <CardHeader>
-            <CardTitle>Book an Appointment</CardTitle>
-            <CardDescription>
-              Please fill out the form below to request an appointment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        
+        {loadingDoctors ? (
+          <Card>
+            <CardContent className="flex items-center justify-center p-8">
+              <div className="flex flex-col items-center space-y-4">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <p className="text-muted-foreground">Loading doctors and departments...</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Book an Appointment</CardTitle>
+              <CardDescription>
+                Please fill out the form below to request an appointment.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
@@ -170,7 +357,7 @@ export default function BookAppointmentPage() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input placeholder="Juan Tamad" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -184,7 +371,7 @@ export default function BookAppointmentPage() {
                         <FormItem>
                         <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                            <Input placeholder="you@example.com" {...field} />
+                            <Input placeholder="j.tamad@gmail.com" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -197,7 +384,7 @@ export default function BookAppointmentPage() {
                         <FormItem>
                         <FormLabel>Mobile Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="555-123-4567" {...field} />
+                            <Input placeholder="+(63)000-000-0000" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -211,7 +398,7 @@ export default function BookAppointmentPage() {
                     <FormItem>
                       <FormLabel>Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Main St, Anytown, USA" {...field} />
+                        <Input placeholder="123 Luzon, Visayas, Mindanao" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -224,14 +411,22 @@ export default function BookAppointmentPage() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Department</FormLabel>
-                        <Select onValueChange={(value) => { field.onChange(value); form.setValue('doctorId', ''); form.setValue('time', ''); }} defaultValue={field.value}>
+                        <Select 
+                          onValueChange={(value) => { 
+                            field.onChange(value); 
+                            form.setValue('doctorId', ''); 
+                            form.setValue('time', ''); 
+                          }} 
+                          defaultValue={field.value}
+                          disabled={loadingDoctors}
+                        >
                             <FormControl>
                             <SelectTrigger>
-                                <SelectValue placeholder="Select a department" />
+                                <SelectValue placeholder={loadingDoctors ? "Loading departments..." : "Select a department"} />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {departments.map((dept) => (
+                            {doctorsData.departments.map((dept) => (
                                 <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                             ))}
                             </SelectContent>
@@ -246,7 +441,14 @@ export default function BookAppointmentPage() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Doctor</FormLabel>
-                        <Select onValueChange={(value) => { field.onChange(value); form.setValue('time', ''); }} value={field.value} disabled={!selectedDepartment}>
+                        <Select 
+                          onValueChange={(value) => { 
+                            field.onChange(value); 
+                            form.setValue('time', ''); 
+                          }} 
+                          value={field.value} 
+                          disabled={!selectedDepartment || loadingDoctors}
+                        >
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a doctor" />
@@ -254,7 +456,9 @@ export default function BookAppointmentPage() {
                             </FormControl>
                             <SelectContent>
                             {filteredDoctors.map((doc) => (
-                                <SelectItem key={doc.id} value={doc.id}>{doc.name}</SelectItem>
+                                <SelectItem key={doc.id} value={doc.id}>
+                                  {doc.name} - {doc.specialization}
+                                </SelectItem>
                             ))}
                             </SelectContent>
                         </Select>
@@ -358,8 +562,9 @@ export default function BookAppointmentPage() {
                 </div>
               </form>
             </Form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

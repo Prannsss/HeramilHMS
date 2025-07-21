@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from "react";
-import { Eye, Search, Trash2, Edit, MoreHorizontal } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Eye, Search, Trash2, Edit, MoreHorizontal, AlertCircle } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import {
   Card,
@@ -40,78 +40,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const initialBills = [
-  {
-    invoiceId: "INV-2023-001",
-    patient: {
-      name: "Amelia Johnson",
-      email: "amelia.j@email.com",
-    },
-    date: "2023-06-15",
-    dateOfAdmission: "2023-06-12",
-    status: "Paid",
-    items: [
-        { description: "Consultation Fee", amount: "$150.00" },
-        { description: "Medication - Lisinopril", amount: "$25.00" },
-    ],
-  },
-  {
-    invoiceId: "INV-2023-002",
-    patient: {
-      name: "Benjamin Carter",
-      email: "ben.c@email.com",
-    },
-    date: "2023-06-18",
-    dateOfAdmission: "2023-06-08",
-    status: "Unpaid",
-    items: [{ description: "Lab Test - Blood Panel", amount: "$100.75" }],
-  },
-  {
-    invoiceId: "INV-2023-003",
-    patient: {
-      name: "Evelyn Foster",
-      email: "evelyn.f@email.com",
-    },
-    date: "2023-06-20",
-    dateOfAdmission: "2023-05-28",
-    status: "Paid",
-    items: [
-      { description: "Emergency Room Visit", amount: "$200.00" },
-      { description: "Medication", amount: "$100.00" },
-    ],
-  },
-  {
-    invoiceId: "INV-2023-004",
-    patient: {
-      name: "Daniel Evans",
-      email: "daniel.e@email.com",
-    },
-    date: "2023-06-22",
-    dateOfAdmission: "2023-06-18",
-    status: "Pending",
-    items: [{ description: "Follow-up Visit", amount: "$75.50" }],
-  },
-  {
-    invoiceId: "INV-2023-005",
-    patient: {
-      name: "Jackson Lee",
-      email: "jackson.lee@email.com",
-    },
-    date: "2023-06-25",
-    dateOfAdmission: "2023-05-28", // Assuming a placeholder, will need to be added to patient data
-    status: "Unpaid",
-    items: [
-      { description: "Surgical Procedure", amount: "$450.00" },
-      { description: "Anesthesia", amount: "$50.20" },
-    ],
-  },
-];
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type BillStatus = "Paid" | "Unpaid" | "Pending";
-type Bill = Omit<typeof initialBills[0], 'patient'> & { patient: { name: string, email: string }};
 
-function BillTable({ bills, onStatusChange, onDelete }: { bills: Bill[], onStatusChange: (invoiceId: string, newStatus: BillStatus) => void, onDelete: (invoiceId: string) => void }) {
+interface BillItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: string;
+}
+
+interface Bill {
+  invoiceId: string;
+  bill_id: number;
+  patient: {
+    name: string;
+    email: string;
+  };
+  date: string;
+  dateOfAdmission: string;
+  status: BillStatus;
+  total_amount: number;
+  items: BillItem[];
+}
+
+function BillTable({ 
+  bills, 
+  onStatusChange, 
+  onDelete 
+}: { 
+  bills: Bill[];
+  onStatusChange: (invoiceId: string, newStatus: BillStatus) => void;
+  onDelete: (invoiceId: string) => void;
+}) {
   const getStatusVariant = (status: string) => {
     switch (status) {
       case "Paid":
@@ -151,7 +114,7 @@ function BillTable({ bills, onStatusChange, onDelete }: { bills: Bill[], onStatu
             </TableCell>
             <TableCell>{bill.date}</TableCell>
             <TableCell>
-                {`$${bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2)}`}
+                ₱{bill.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </TableCell>
             <TableCell>
               <Badge variant={getStatusVariant(bill.status)} className={bill.status === 'Pending' ? 'bg-yellow-500 text-black' : ''}>
@@ -196,21 +159,154 @@ function BillTable({ bills, onStatusChange, onDelete }: { bills: Bill[], onStatu
   );
 }
 
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex items-center space-x-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function AdminBillingPage() {
-  const [bills, setBills] = useState(initialBills);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    fetchBills();
+  }, []);
+
+  const fetchBills = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/billing.php');
+      const data = await response.json();
+      
+      if (data.success) {
+        setBills(data.data);
+      } else {
+        setError(data.error || 'Failed to fetch bills');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+      console.error('Error fetching bills:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  const handleStatusChange = (invoiceId: string, newStatus: BillStatus) => {
-    setBills(bills.map(bill => bill.invoiceId === invoiceId ? {...bill, status: newStatus} : bill));
+  const handleStatusChange = async (invoiceId: string, newStatus: BillStatus) => {
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/src/backend/api/billing.php', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          invoiceId,
+          status: newStatus
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setBills(bills.map((bill: Bill) => 
+          bill.invoiceId === invoiceId ? {...bill, status: newStatus} : bill
+        ));
+      } else {
+        setError(data.error || 'Failed to update bill status');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+      console.error('Error updating bill status:', err);
+    }
+  };
+
+  const handleDelete = async (invoiceId: string) => {
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/src/backend/api/billing.php', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ invoiceId }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setBills(bills.filter((bill: Bill) => bill.invoiceId !== invoiceId));
+      } else {
+        setError(data.error || 'Failed to delete bill');
+      }
+    } catch (err) {
+      setError('Failed to connect to server');
+      console.error('Error deleting bill:', err);
+    }
+  };
+
+  const filteredBills = bills.filter((bill: Bill) =>
+    bill.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    bill.invoiceId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
+  const paidBills = filteredBills.filter((bill: Bill) => bill.status === 'Paid');
+  const unpaidBills = filteredBills.filter((bill: Bill) => bill.status === 'Unpaid');
+  const pendingBills = filteredBills.filter((bill: Bill) => bill.status === 'Pending');
+
+  if (loading) {
+    return (
+      <DashboardLayout role="admin">
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Patient Invoices</CardTitle>
+            <CardDescription>Loading billing records...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LoadingSkeleton />
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
-  const handleDelete = (invoiceId: string) => {
-    setBills(bills.filter(bill => bill.invoiceId !== invoiceId));
+  if (error) {
+    return (
+      <DashboardLayout role="admin">
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Patient Invoices</CardTitle>
+            <CardDescription>Error loading billing records</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button 
+              onClick={fetchBills} 
+              className="mt-4"
+              variant="outline"
+            >
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
-  
-  const paidBills = bills.filter(bill => bill.status === 'Paid');
-  const unpaidBills = bills.filter(bill => bill.status === 'Unpaid');
-  const pendingBills = bills.filter(bill => bill.status === 'Pending');
 
   return (
     <DashboardLayout role="admin">
@@ -223,11 +319,22 @@ export default function AdminBillingPage() {
           <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search invoices..." className="pl-8" />
+              <Input 
+                placeholder="Search invoices..." 
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <Tabs defaultValue="unpaid">
             <TabsList>
               <TabsTrigger value="unpaid">Unpaid ({unpaidBills.length})</TabsTrigger>
@@ -247,7 +354,7 @@ export default function AdminBillingPage() {
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
-                Showing <strong>1-{bills.length}</strong> of <strong>{bills.length}</strong> invoices
+                Showing <strong>{filteredBills.length}</strong> of <strong>{bills.length}</strong> invoices
             </div>
         </CardFooter>
       </Card>
@@ -256,11 +363,7 @@ export default function AdminBillingPage() {
 }
 
 function InvoiceModal({ bill }: { bill: Bill }) {
-  const totalAmount = bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0);
-  
   const handlePrint = () => {
-    const totalAmount = bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0);
-
     const invoiceContent = `
                         Heramil Hospital
 
@@ -275,11 +378,13 @@ Status: ${bill.status}
 ---------------------------------------------------------
 
 Items:
-${bill.items.map(item => `${item.description.padEnd(30)} ${item.amount}`).join('\n')}
+${bill.items.map(item => 
+  `${item.description.padEnd(25)} Qty: ${item.quantity} @ ₱${item.unit_price.toFixed(2)} = ${item.amount}`
+).join('\n')}
 
 ---------------------------------------------------------
 
-Total Amount: $${totalAmount.toFixed(2)}
+Total Amount: ₱${bill.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 
 `;
     const blob = new Blob([invoiceContent], { type: 'text/plain' });
@@ -321,15 +426,15 @@ Total Amount: $${totalAmount.toFixed(2)}
         <div className="border-t pt-4 mt-2">
             <h4 className="font-semibold mb-2">Invoice Items</h4>
             {bill.items.map((item, index) => (
-                <div key={index} className="flex justify-between text-sm">
-                    <span>{item.description}</span>
+                <div key={index} className="flex justify-between text-sm mb-1">
+                    <span>{item.description} (Qty: {item.quantity})</span>
                     <span>{item.amount}</span>
                 </div>
             ))}
         </div>
         <div className="flex justify-between font-bold text-lg border-t pt-4 mt-2">
             <span>Total Amount</span>
-            <span>${totalAmount.toFixed(2)}</span>
+            <span>₱{bill.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       </div>
       <DialogFooter>

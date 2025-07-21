@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/backend/api/:path*',
+        destination: 'http://localhost/HeramilHMS/public/backend/api/:path*',
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

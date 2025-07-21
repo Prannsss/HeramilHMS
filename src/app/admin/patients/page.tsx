@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, PlusCircle, Search, MoreHorizontal, LogOut } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import {
@@ -45,7 +45,8 @@ import {
 } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 
-const initialPatients = [
+// Fallback data in case API fails
+const fallbackPatients = [
   {
     id: "PAT001",
     name: "Amelia Johnson",
@@ -54,7 +55,7 @@ const initialPatients = [
     address: "123 Maple St, Springfield, IL",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
-    status: "Active",
+    status: "Active" as const,
     doctor: "Dr. Evelyn Reed",
     bloodType: "A+",
     allergies: "Peanuts",
@@ -62,7 +63,7 @@ const initialPatients = [
     reasonForAdmission: "Routine Check-up",
     dateOfDischarge: null,
     prescriptions: ["Lisinopril 10mg for hypertension."],
-    usedItems: [],
+    usedItems: [] as any[],
     billItems: [
         { description: "Consultation Fee", amount: "$150.00" },
         { description: "Medication - Lisinopril", amount: "$25.00" },
@@ -76,15 +77,15 @@ const initialPatients = [
     address: "456 Oak Ave, Metropolis, CA",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
-    status: "Active",
+    status: "Active" as const,
     doctor: "Dr. Kenji Tanaka",
     bloodType: "O-",
     allergies: "None",
     dateOfAdmission: "2023-06-08",
     reasonForAdmission: "Fractured Arm",
     dateOfDischarge: null,
-    prescriptions: [],
-    usedItems: [],
+    prescriptions: [] as string[],
+    usedItems: [] as any[],
     billItems: [{ description: "Lab Test - Blood Panel", amount: "$100.00" }],
   },
   {
@@ -95,60 +96,48 @@ const initialPatients = [
     address: "789 Pine Ln, Gotham, NY",
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
-    status: "Discharged",
+    status: "Discharged" as const,
     doctor: "Dr. Evelyn Reed",
     bloodType: "B+",
     allergies: "Pollen",
     dateOfAdmission: "2023-05-15",
     reasonForAdmission: "Minor Surgery",
     dateOfDischarge: "2023-05-20",
-    prescriptions: [],
-    usedItems: [],
+    prescriptions: [] as string[],
+    usedItems: [] as any[],
     billItems: [{ description: "Emergency Room Visit", amount: "$200.00" }, {description: "Medication", amount: "$100.00"}],
-  },
-  {
-    id: "PAT004",
-    name: "Daniel Evans",
-    email: "daniel.e@email.com",
-    mobile: "555-0104",
-    address: "101 Birch Rd, Star City, TX",
-    dob: "2001-01-30",
-    lastVisit: "2023-06-18",
-    status: "Active",
-    doctor: "Dr. Evelyn Reed",
-    bloodType: "AB+",
-    allergies: "Aspirin",
-    dateOfAdmission: "2023-06-18",
-    reasonForAdmission: "Allergic Reaction",
-    dateOfDischarge: null,
-    prescriptions: [],
-    usedItems: [],
-    billItems: [{ description: "Follow-up Visit", amount: "$75.50" }],
-  },
-  {
-    id: "PAT005",
-    name: "Evelyn Foster",
-    email: "evelyn.f@email.com",
-    mobile: "555-0105",
-    address: "212 Cedar Blvd, Central City, MO",
-    dob: "1999-07-19",
-    lastVisit: "2023-06-01",
-    status: "Active",
-    doctor: "Dr. Mark O'Connell",
-    bloodType: "O+",
-    allergies: "None",
-    dateOfAdmission: "2023-05-28",
-    reasonForAdmission: "Migraine Treatment",
-    dateOfDischarge: null,
-    prescriptions: [],
-    usedItems: [],
-    billItems: [{ description: "Surgical Procedure", amount: "$450.00" }, { description: "Anesthesia", amount: "$50.20" }],
-  },
+  }
 ];
 
-type Patient = typeof initialPatients[0];
+type Patient = typeof fallbackPatients[0] & {
+  patient_id?: number;
+  status: 'Active' | 'Discharged';
+  dateOfDischarge?: string | null;
+};
 
-function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Patient[], onPatientSelect: (patient: Patient) => void, onDischarge: (patientId: string) => void }) {
+function PatientTable({ patients, onPatientSelect, onDischarge, loading, dischargingPatient }: { 
+  patients: Patient[], 
+  onPatientSelect: (patient: Patient) => void, 
+  onDischarge: (patientId: string) => void,
+  loading?: boolean,
+  dischargingPatient?: string | null
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="text-lg">Loading patients...</div>
+      </div>
+    );
+  }
+
+  if (patients.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No patients found in this category
+      </div>
+    );
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -197,8 +186,12 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
                       <Eye className="mr-2 h-4 w-4" /> View Details
                     </DropdownMenuItem>
                     {patient.status === 'Active' && (
-                        <DropdownMenuItem onClick={() => onDischarge(patient.id)}>
-                            <LogOut className="mr-2 h-4 w-4" /> Discharge Patient
+                        <DropdownMenuItem 
+                          onClick={() => onDischarge(patient.id)}
+                          disabled={dischargingPatient === patient.id}
+                        >
+                            <LogOut className="mr-2 h-4 w-4" /> 
+                            {dischargingPatient === patient.id ? 'Discharging...' : 'Discharge Patient'}
                         </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -214,7 +207,11 @@ function PatientTable({ patients, onPatientSelect, onDischarge }: { patients: Pa
 function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void }) {
   if (!patient) return null;
 
-  const totalBill = patient.billItems.reduce((acc, item) => acc + parseFloat(item.amount.replace('$', '')), 0);
+  const totalBill = (patient.billItems || []).reduce((acc, item) => {
+    // Handle both $ and ₱ currency symbols
+    const amount = item.amount.replace(/[$₱,]/g, '');
+    return acc + parseFloat(amount);
+  }, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -283,9 +280,21 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                 <Separator />
                 <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Billing Summary</h4>
+                    {(patient.billItems && patient.billItems.length > 0) ? (
+                      <div className="mt-2 space-y-2">
+                        {patient.billItems.map((item, index) => (
+                          <div key={index} className="flex justify-between text-sm">
+                            <span>{item.description}</span>
+                            <span>{item.amount}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-2">No billing items available</p>
+                    )}
                      <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
                         <span>Total Bill</span>
-                        <span>${totalBill.toFixed(2)}</span>
+                        <span>₱{totalBill.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
@@ -296,27 +305,105 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
 }
 
 export default function AdminPatientsPage() {
-  const [patients, setPatients] = useState(initialPatients);
+  const [patients, setPatients] = useState<Patient[]>(fallbackPatients);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dischargingPatient, setDischargingPatient] = useState<string | null>(null);
+
+  // Fetch patients from API
+  const fetchPatients = async () => {
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/patients.php');
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        setPatients(result.data);
+      } else {
+        setError(result.message || 'Failed to fetch patients');
+      }
+    } catch (err) {
+      setError('Error connecting to server - using fallback data');
+      console.error('Patients API Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
 
   const handlePatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
     setIsModalOpen(true);
   }
 
-  const handleDischarge = (patientId: string) => {
-    setPatients(patients.map(p => {
-        if (p.id === patientId) {
+  const handleDischarge = async (patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // Set loading state for this specific patient
+    setDischargingPatient(patientId);
+    setError(null); // Clear any previous errors
+
+    // Function to update local state
+    const updateLocalState = () => {
+      setPatients(prevPatients => 
+        prevPatients.map(p => {
+          if (p.id === patientId) {
             return {
-                ...p,
-                status: 'Discharged',
-                dateOfDischarge: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+              ...p,
+              status: 'Discharged',
+              dateOfDischarge: currentDate,
             };
-        }
-        return p;
-    }));
+          }
+          return p;
+        })
+      );
+    };
+
+    // If no patient_id (using fallback data), just update local state
+    if (!patient?.patient_id) {
+      updateLocalState();
+      setDischargingPatient(null);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/patients.php', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patient_id: patient.patient_id,
+          action: 'discharge'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        // Update local state on successful API call
+        updateLocalState();
+        console.log('Patient discharged successfully:', result.message);
+      } else {
+        console.error('API returned error:', result.message);
+        setError(`Failed to discharge patient: ${result.message}`);
+      }
+    } catch (err) {
+      console.error('Error discharging patient:', err);
+      setError('Network error during discharge. Please try again.');
+    } finally {
+      setDischargingPatient(null);
+    }
   };
 
   const filteredPatients = patients.filter(patient =>
@@ -334,6 +421,11 @@ export default function AdminPatientsPage() {
           <CardTitle>Patient Records</CardTitle>
           <CardDescription>
             A comprehensive list of all patients.
+            {error && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                <strong>Note:</strong> {error}
+              </div>
+            )}
           </CardDescription>
           <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
@@ -354,10 +446,22 @@ export default function AdminPatientsPage() {
               <TabsTrigger value="discharged">Discharged ({dischargedPatients.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="active">
-              <PatientTable patients={activePatients} onPatientSelect={handlePatientSelect} onDischarge={handleDischarge} />
+              <PatientTable 
+                patients={activePatients} 
+                onPatientSelect={handlePatientSelect} 
+                onDischarge={handleDischarge} 
+                loading={loading}
+                dischargingPatient={dischargingPatient}
+              />
             </TabsContent>
             <TabsContent value="discharged">
-               <PatientTable patients={dischargedPatients} onPatientSelect={handlePatientSelect} onDischarge={handleDischarge} />
+               <PatientTable 
+                 patients={dischargedPatients} 
+                 onPatientSelect={handlePatientSelect} 
+                 onDischarge={handleDischarge}
+                 loading={loading}
+                 dischargingPatient={dischargingPatient}
+               />
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PlusCircle, Search, Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { PageHeader } from "@/components/page-header";
@@ -21,10 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -36,61 +32,124 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
+type InventoryItem = {
+    id: string;
+    name: string;
+    category: string;
+    stock: number;
+    maxStock: number;
+    unit_price?: number;
+    created_at?: string;
+    updated_at?: string;
+};
 
-const initialInventory = [
-  {
-    id: "INV001",
-    name: "Surgical Masks",
-    category: "PPE",
-    stock: 850,
-    maxStock: 1000,
-  },
-  {
-    id: "INV002",
-    name: "Amoxicillin 500mg",
-    category: "Medication",
-    stock: 120,
-    maxStock: 200,
-  },
-  {
-    id: "INV003",
-    name: "IV Drip Bags",
-    category: "Medical Supplies",
-    stock: 45,
-    maxStock: 150,
-  },
-  {
-    id: "INV004",
-    name: "Defibrillator",
-    category: "Equipment",
-    stock: 10,
-    maxStock: 10,
-  },
-  {
-    id: "INV005",
-    name: "Hand Sanitizer (5L)",
-    category: "Consumables",
-    stock: 0,
-    maxStock: 50,
-  },
-];
+// API functions
+const fetchInventory = async (): Promise<InventoryItem[]> => {
+  try {
+    const response = await fetch('http://localhost/HeramilHMS/public/backend/api/inventory.php');
+    const data = await response.json();
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error('Failed to fetch inventory data');
+    }
+  } catch (error) {
+    console.error('Error fetching inventory:', error);
+    throw error;
+  }
+};
 
-type InventoryItem = typeof initialInventory[0];
+const addInventoryItem = async (itemData: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>): Promise<InventoryItem> => {
+  try {
+    const response = await fetch('http://localhost/HeramilHMS/public/backend/api/inventory.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(itemData),
+    });
+    const data = await response.json();
+    if (data.success) {
+      return data.data;
+    } else {
+      throw new Error(data.error || 'Failed to add inventory item');
+    }
+  } catch (error) {
+    console.error('Error adding inventory item:', error);
+    throw error;
+  }
+};
+
+const addStockToItem = async (itemId: string, quantity: number): Promise<number> => {
+  try {
+    const response = await fetch('http://localhost/HeramilHMS/public/backend/api/inventory.php', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: itemId, addStock: quantity }),
+    });
+    const data = await response.json();
+    if (data.success) {
+      return data.new_stock;
+    } else {
+      throw new Error(data.error || 'Failed to add stock');
+    }
+  } catch (error) {
+    console.error('Error adding stock:', error);
+    throw error;
+  }
+};
+
+const deleteInventoryItem = async (itemId: string): Promise<void> => {
+  try {
+    const response = await fetch('http://localhost/HeramilHMS/public/backend/api/inventory.php', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: itemId }),
+    });
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to delete inventory item');
+    }
+  } catch (error) {
+    console.error('Error deleting inventory item:', error);
+    throw error;
+  }
+};
 
 const getStatus = (stock: number, maxStock: number): { text: string; variant: "secondary" | "default" | "destructive", className: string } => {
     if (stock === 0) return { text: "Out of Stock", variant: "destructive", className: "" };
@@ -100,29 +159,62 @@ const getStatus = (stock: number, maxStock: number): { text: string; variant: "s
 };
 
 export default function AdminInventoryPage() {
-  const [inventory, setInventory] = useState(initialInventory);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddItem = (newItemData: Omit<InventoryItem, 'id'>) => {
-    const newItem: InventoryItem = {
-      ...newItemData,
-      id: `INV${(inventory.length + 1).toString().padStart(3, '0')}`,
-    };
-    setInventory([...inventory, newItem]);
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  const loadInventory = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const inventoryData = await fetchInventory();
+      setInventory(inventoryData);
+    } catch (err) {
+      setError('Failed to load inventory data. Please try again.');
+      console.error('Error loading inventory:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddStock = (itemId: string, quantity: number) => {
-    setInventory(inventory.map(item => {
+  const handleAddItem = async (newItemData: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      setError(null);
+      const addedItem = await addInventoryItem(newItemData);
+      setInventory(prevInventory => [addedItem, ...prevInventory]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to add inventory item');
+    }
+  };
+
+  const handleAddStock = async (itemId: string, quantity: number) => {
+    try {
+      setError(null);
+      const newStock = await addStockToItem(itemId, quantity);
+      setInventory(inventory.map(item => {
         if (item.id === itemId) {
-            const newStock = Math.min(item.stock + quantity, item.maxStock);
-            return { ...item, stock: newStock };
+          return { ...item, stock: newStock };
         }
         return item;
-    }));
+      }));
+    } catch (err: any) {
+      setError(err.message || 'Failed to add stock');
+    }
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    setInventory(inventory.filter(item => item.id !== itemId));
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      setError(null);
+      await deleteInventoryItem(itemId);
+      setInventory(inventory.filter(item => item.id !== itemId));
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete inventory item');
+    }
   };
   
   const filteredInventory = inventory.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -130,13 +222,17 @@ export default function AdminInventoryPage() {
 
   return (
     <DashboardLayout role="admin">
-      
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Inventory Status</CardTitle>
           <CardDescription>
             An overview of all items in the hospital inventory.
           </CardDescription>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
           <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -151,58 +247,68 @@ export default function AdminInventoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item Name</TableHead>
-                <TableHead>Item ID</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Stock Level</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInventory.map((item) => {
-                const status = getStatus(item.stock, item.maxStock);
-                return (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.id}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{item.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={(item.stock / item.maxStock) * 100} className="w-24 h-2" />
-                        <span>{item.stock} / {item.maxStock}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={status.variant}
-                        className={status.className}
-                      >
-                        {status.text}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <div className="flex justify-end items-center gap-2">
-                            <AddStockModal item={item} onAddStock={handleAddStock}>
-                                <Button size="sm" variant="outline">Add Stock</Button>
-                            </AddStockModal>
-                            <DeleteItemModal itemName={item.name} onDelete={() => handleDeleteItem(item.id)} />
+          {loading ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {[...Array(7)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item Name</TableHead>
+                  <TableHead>Item ID</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Stock Level</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInventory.map((item) => {
+                  const status = getStatus(item.stock, item.maxStock);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.id}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{item.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={(item.stock / item.maxStock) * 100} className="w-24 h-2" />
+                          <span>{item.stock} / {item.maxStock}</span>
                         </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={status.variant}
+                          className={status.className}
+                        >
+                          {status.text}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                          <div className="flex justify-end items-center gap-2">
+                              <AddStockModal item={item} onAddStock={handleAddStock}>
+                                  <Button size="sm" variant="outline">Add Stock</Button>
+                              </AddStockModal>
+                              <DeleteItemModal itemName={item.name} onDelete={() => handleDeleteItem(item.id)} />
+                          </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
-                Showing <strong>1-{filteredInventory.length}</strong> of <strong>{filteredInventory.length}</strong> items
+                Showing <strong>1-{filteredInventory.length}</strong> of <strong>{inventory.length}</strong> items
             </div>
         </CardFooter>
       </Card>
@@ -210,16 +316,24 @@ export default function AdminInventoryPage() {
   );
 }
 
-function AddItemModal({ children, onAddItem, categories }: { children: React.ReactNode, onAddItem: (item: Omit<InventoryItem, 'id'>) => void, categories: string[] }) {
+function AddItemModal({ children, onAddItem, categories }: { children: React.ReactNode, onAddItem: (item: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>) => void, categories: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', category: '', stock: 0, maxStock: 100 });
+  const [newItem, setNewItem] = useState({ name: '', category: '', stock: 0, maxStock: 100, unit_price: 0 });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSave = () => {
-    onAddItem(newItem);
-    setIsOpen(false);
-    setIsConfirmOpen(false);
-    setNewItem({ name: '', category: '', stock: 0, maxStock: 100 });
+  const handleSave = async () => {
+    try {
+      setIsSubmitting(true);
+      await onAddItem(newItem);
+      setIsOpen(false);
+      setIsConfirmOpen(false);
+      setNewItem({ name: '', category: '', stock: 0, maxStock: 100, unit_price: 0 });
+    } catch (error) {
+      console.error('Error adding item:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const handleSubmit = () => {
@@ -233,7 +347,12 @@ function AddItemModal({ children, onAddItem, categories }: { children: React.Rea
   
   return (
     <>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open) {
+            setNewItem({ name: '', category: '', stock: 0, maxStock: 100, unit_price: 0 });
+          }
+        }}>
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent>
             <DialogHeader>
@@ -263,12 +382,18 @@ function AddItemModal({ children, onAddItem, categories }: { children: React.Rea
                 <Label htmlFor="maxStock" className="text-right">Max Stock</Label>
                 <Input id="maxStock" type="number" value={newItem.maxStock} onChange={(e) => setNewItem({...newItem, maxStock: parseInt(e.target.value, 10) || 0})} className="col-span-3" />
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="unit_price" className="text-right">Unit Price (₱)</Label>
+                <Input id="unit_price" type="number" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem({...newItem, unit_price: parseFloat(e.target.value) || 0})} className="col-span-3" />
+            </div>
             </div>
             <DialogFooter>
             <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button onClick={handleSubmit}>Save Item</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Adding...' : 'Save Item'}
+            </Button>
             </DialogFooter>
         </DialogContent>
         </Dialog>
@@ -282,7 +407,9 @@ function AddItemModal({ children, onAddItem, categories }: { children: React.Rea
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleSave}>Yes, Add Category</AlertDialogAction>
+                    <AlertDialogAction onClick={handleSave} disabled={isSubmitting}>
+                      {isSubmitting ? 'Adding...' : 'Yes, Add Category'}
+                    </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -347,11 +474,19 @@ function CategoryCombobox({ categories, value, onChange }: { categories: string[
 function AddStockModal({ children, item, onAddStock }: { children: React.ReactNode, item: InventoryItem, onAddStock: (itemId: string, quantity: number) => void }) {
     const [isOpen, setIsOpen] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = () => {
-        onAddStock(item.id, quantity);
-        setIsOpen(false);
-        setQuantity(1);
+    const handleSubmit = async () => {
+        try {
+            setIsSubmitting(true);
+            await onAddStock(item.id, quantity);
+            setIsOpen(false);
+            setQuantity(1);
+        } catch (error) {
+            console.error('Error adding stock:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
     }
     
     return (
@@ -384,7 +519,9 @@ function AddStockModal({ children, item, onAddStock }: { children: React.ReactNo
                     <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                     </DialogClose>
-                    <Button onClick={handleSubmit}>Add to Stock</Button>
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? 'Adding...' : 'Add to Stock'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

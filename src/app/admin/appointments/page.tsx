@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, X, Undo2 } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard-layout';
 import {
@@ -38,9 +38,12 @@ type Appointment = {
   time: string;
   reason: string;
   status: AppointmentStatus;
+  db_status?: string;
+  appointment_id?: number;
 };
 
-const initialAppointments: Appointment[] = [
+// Fallback data in case API fails
+const fallbackAppointments: Appointment[] = [
     {
         id: 'APP001',
         patient: { name: 'Liam Johnson', email: 'liam@email.com', mobile: '555-0101', address: "123 Maple St, Springfield, IL" },
@@ -101,11 +104,29 @@ function AppointmentTable({
   appointments,
   onStatusChange,
   onFinalize,
+  loading,
 }: {
   appointments: Appointment[];
   onStatusChange: (id: string, status: AppointmentStatus) => void;
   onFinalize: (id: string) => void;
+  loading: boolean;
 }) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="text-lg">Loading appointments...</div>
+      </div>
+    );
+  }
+
+  if (appointments.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No appointments found in this category
+      </div>
+    );
+  }
+
   return (
     <Table>
       <TableHeader>
@@ -202,19 +223,112 @@ function AppointmentTable({
 }
 
 export default function AdminAppointmentsPage() {
-  const [appointments, setAppointments] =
-    useState<Appointment[]>(initialAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>(fallbackAppointments);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleStatusChange = (id: string, status: AppointmentStatus) => {
-    setAppointments(
-      appointments.map((appt) =>
-        appt.id === id ? { ...appt, status } : appt
-      )
-    );
+  // Fetch appointments from API
+  const fetchAppointments = async () => {
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/appointments.php');
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        setAppointments(result.data);
+      } else {
+        setError(result.message || 'Failed to fetch appointments');
+      }
+    } catch (err) {
+      setError('Error connecting to server - using fallback data');
+      console.error('Appointments API Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  const handleStatusChange = async (id: string, status: AppointmentStatus) => {
+    const appointment = appointments.find(appt => appt.id === id);
+    if (!appointment?.appointment_id) {
+      // Fallback to local state change if no appointment_id (fallback data)
+      setAppointments(
+        appointments.map((appt) =>
+          appt.id === id ? { ...appt, status } : appt
+        )
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/appointments.php', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointment_id: appointment.appointment_id,
+          status: status
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        // Update local state
+        setAppointments(
+          appointments.map((appt) =>
+            appt.id === id ? { ...appt, status } : appt
+          )
+        );
+      } else {
+        console.error('Failed to update appointment:', result.message);
+      }
+    } catch (err) {
+      console.error('Error updating appointment:', err);
+      // Fallback to local state change
+      setAppointments(
+        appointments.map((appt) =>
+          appt.id === id ? { ...appt, status } : appt
+        )
+      );
+    }
   };
   
-  const handleFinalize = (id: string) => {
-    setAppointments(appointments.filter((appt) => appt.id !== id));
+  const handleFinalize = async (id: string) => {
+    const appointment = appointments.find(appt => appt.id === id);
+    if (!appointment?.appointment_id) {
+      // Fallback to local state change if no appointment_id (fallback data)
+      setAppointments(appointments.filter((appt) => appt.id !== id));
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/appointments.php', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appointment_id: appointment.appointment_id
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        // Remove from local state
+        setAppointments(appointments.filter((appt) => appt.id !== id));
+      } else {
+        console.error('Failed to delete appointment:', result.message);
+      }
+    } catch (err) {
+      console.error('Error deleting appointment:', err);
+      // Fallback to local state change
+      setAppointments(appointments.filter((appt) => appt.id !== id));
+    }
   };
 
   const requestAppointments = appointments.filter(
@@ -234,6 +348,11 @@ export default function AdminAppointmentsPage() {
           <CardTitle>Appointment Management</CardTitle>
           <CardDescription>
             Verify or reject incoming appointment requests.
+            {error && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                <strong>Note:</strong> {error}
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -254,6 +373,7 @@ export default function AdminAppointmentsPage() {
                 appointments={requestAppointments}
                 onStatusChange={handleStatusChange}
                 onFinalize={handleFinalize}
+                loading={loading}
               />
             </TabsContent>
             <TabsContent value="verified">
@@ -261,6 +381,7 @@ export default function AdminAppointmentsPage() {
                 appointments={verifiedAppointments}
                 onStatusChange={handleStatusChange}
                 onFinalize={handleFinalize}
+                loading={loading}
               />
             </TabsContent>
              <TabsContent value="rejected">
@@ -268,6 +389,7 @@ export default function AdminAppointmentsPage() {
                 appointments={rejectedAppointments}
                 onStatusChange={handleStatusChange}
                 onFinalize={handleFinalize}
+                loading={loading}
               />
             </TabsContent>
           </Tabs>

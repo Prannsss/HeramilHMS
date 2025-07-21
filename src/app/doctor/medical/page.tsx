@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/dashboard-layout';
 import {
   Card,
@@ -33,160 +33,169 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const medicalRecords = [
-    {
-    id: 'REC001',
-    patient: { name: 'Amelia Johnson' },
-    doctor: 'Dr. Evelyn Reed',
-    date: '2023-06-15',
-    dateOfAdmission: '2023-06-12',
-    type: 'Prescription',
-    details: 'Lisinopril 10mg for hypertension.',
-    bill: {
-        invoiceId: 'INV-2023-001',
-        status: 'Paid',
-        items: [
-            { description: 'Consultation Fee', amount: '$150.00' },
-            { description: 'Medication - Lisinopril', amount: '$25.00' },
-        ],
-    },
-  },
-  {
-    id: 'REC002',
-    patient: { name: 'Benjamin Carter' },
-    doctor: 'Dr. Kenji Tanaka',
-    date: '2023-06-18',
-    dateOfAdmission: '2023-06-08',
-    type: 'Test Result',
-    details: 'Blood Panel: All levels normal.',
-    bill: {
-        invoiceId: 'INV-2023-002',
-        status: 'Unpaid',
-        items: [{ description: 'Lab Test - Blood Panel', amount: '$100.75' }],
-    },
-  },
-  {
-    id: 'REC003',
-    patient: { name: 'Charlotte Davis' },
-    doctor: 'Dr. Mark O\'Connell',
-    date: '2023-06-20',
-    dateOfAdmission: '2023-05-15',
-    type: 'Diagnosis',
-    details: 'Diagnosed with seasonal allergies.',
-     bill: {
-        invoiceId: 'INV-2023-003',
-        status: 'Paid',
-        items: [{ description: 'Consultation', amount: '$100.00' }],
-    },
-  },
-  {
-    id: 'REC004',
-    patient: { name: 'Daniel Evans' },
-    doctor: 'Dr. Evelyn Reed',
-    date: '2023-06-22',
-    dateOfAdmission: '2023-06-18',
-    type: 'Prescription',
-    details: 'Amoxicillin 500mg for infection.',
-     bill: {
-        invoiceId: 'INV-2023-004',
-        status: 'Pending',
-        items: [
-            { description: 'Follow-up Visit', amount: '$50.00' },
-            { description: 'Medication - Amoxicillin', amount: '$25.50' },
-        ],
-    },
-  },
-  {
-    id: 'REC005',
-    patient: { name: 'Evelyn Foster' },
-    doctor: 'Dr. Kenji Tanaka',
-    date: '2023-06-25',
-    dateOfAdmission: '2023-05-28',
-    type: 'Test Result',
-    details: 'X-Ray: No fractures detected.',
-     bill: {
-        invoiceId: 'INV-2023-005',
-        status: 'Unpaid',
-        items: [{ description: 'X-Ray', amount: '$180.00' }],
-    },
-  },
-];
+interface MedicalRecord {
+  id: string;
+  patient: { name: string };
+  doctor: string;
+  date: string;
+  dateOfAdmission: string;
+  type: string;
+  details: string;
+  bill: {
+    invoiceId: string;
+    status: string;
+    items: Array<{ description: string; amount: string }>;
+  };
+}
 
-type MedicalRecord = typeof medicalRecords[0];
+function MedicalRecordModal({ record, onClose }: { record: MedicalRecord | null; onClose: () => void }) {
+  const [detailedRecord, setDetailedRecord] = useState<MedicalRecord | null>(null);
+  const [loading, setLoading] = useState(false);
 
-function MedicalRecordModal({ record }: { record: MedicalRecord }) {
-  const totalAmount = record.bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2);
+  useEffect(() => {
+    if (record?.id) {
+      fetchRecordDetails(record.id);
+    }
+  }, [record?.id]);
+
+  const fetchRecordDetails = async (recordId: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-medical.php?action=record_details&record_id=${recordId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setDetailedRecord(result.data);
+      } else {
+        console.error('Failed to fetch record details:', result.error);
+        setDetailedRecord(record);
+      }
+    } catch (error) {
+      console.error('Error fetching record details:', error);
+      setDetailedRecord(record);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!record) return null;
+
+  const displayRecord = detailedRecord || record;
+  const totalAmount = displayRecord.bill.items.reduce((total, item) => {
+    // Remove ₱ symbol and any comma separators, then parse as float
+    const amount = parseFloat(item.amount.replace(/₱|,/g, ''));
+    return total + (isNaN(amount) ? 0 : amount);
+  }, 0);
+
   return (
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>Medical Record Details</DialogTitle>
         <DialogDescription>
-          Record ID: {record.id}
+          Record ID: {displayRecord.id}
         </DialogDescription>
       </DialogHeader>
       <div className="grid gap-6 py-4 text-sm">
-        <div className="grid grid-cols-2 gap-4">
-            <div>
+        {loading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="text-muted-foreground">Loading record details...</div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <p className="font-medium text-muted-foreground">Patient</p>
-                <p>{record.patient.name}</p>
-            </div>
-             <div>
+                <p>{displayRecord.patient.name}</p>
+              </div>
+              <div>
                 <p className="font-medium text-muted-foreground">Doctor</p>
-                <p>{record.doctor}</p>
-            </div>
-             <div>
+                <p>{displayRecord.doctor}</p>
+              </div>
+              <div>
                 <p className="font-medium text-muted-foreground">Date of Admission</p>
-                <p>{record.dateOfAdmission}</p>
-            </div>
-             <div>
+                <p>{displayRecord.dateOfAdmission}</p>
+              </div>
+              <div>
                 <p className="font-medium text-muted-foreground">Record Date</p>
-                <p>{record.date}</p>
-            </div>
-             <div>
+                <p>{displayRecord.date}</p>
+              </div>
+              <div>
                 <p className="font-medium text-muted-foreground">Record Type</p>
-                <p>{record.type}</p>
-            </div>
-             <div className="col-span-2">
+                <p>{displayRecord.type}</p>
+              </div>
+              <div className="col-span-2">
                 <p className="font-medium text-muted-foreground">Details</p>
-                <p>{record.details}</p>
+                <p>{displayRecord.details}</p>
+              </div>
             </div>
-        </div>
-        <div className="border-t pt-4">
-            <h4 className="font-semibold mb-2 text-base">Billing Information</h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-2 text-base">Billing Information</h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                 <div>
-                    <p className="font-medium text-muted-foreground">Invoice ID</p>
-                    <p>{record.bill.invoiceId}</p>
+                  <p className="font-medium text-muted-foreground">Invoice ID</p>
+                  <p>{displayRecord.bill.invoiceId}</p>
                 </div>
-                 <div>
-                    <p className="font-medium text-muted-foreground">Bill Status</p>
-                    <p>{record.bill.status}</p>
+                <div>
+                  <p className="font-medium text-muted-foreground">Bill Status</p>
+                  <p>{displayRecord.bill.status}</p>
                 </div>
-            </div>
-            <div className="border-t pt-2 mt-4">
-                <h5 className="font-semibold mb-2">Invoice Items</h5>
-                {record.bill.items.map((item, index) => (
-                    <div key={index} className="flex justify-between">
+              </div>
+              {displayRecord.bill.items.length > 0 && (
+                <>
+                  <div className="border-t pt-2 mt-4">
+                    <h5 className="font-semibold mb-2">Invoice Items</h5>
+                    {displayRecord.bill.items.map((item, index) => (
+                      <div key={index} className="flex justify-between">
                         <span>{item.description}</span>
                         <span>{item.amount}</span>
-                    </div>
-                ))}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between font-bold text-lg border-t pt-2 mt-4">
+                    <span>Total Amount</span>
+                    <span>₱{totalAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-4">
-                <span>Total Amount</span>
-                <span>${totalAmount}</span>
-            </div>
-        </div>
+          </>
+        )}
       </div>
       <DialogFooter className="mt-4 h-8">
+        <Button variant="outline" onClick={onClose}>Close</Button>
       </DialogFooter>
     </DialogContent>
   );
 }
 
 export default function DoctorMedicalPage() {
-  const [records, setRecords] = useState<MedicalRecord[]>(medicalRecords);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchMedicalRecords();
+  }, []);
+
+  const fetchMedicalRecords = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-medical.php?action=records');
+      const result = await response.json();
+      
+      if (result.success) {
+        setRecords(result.data);
+      } else {
+        console.error('Failed to fetch medical records:', result.error);
+      }
+    } catch (error) {
+      console.error('Error fetching medical records:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredRecords = records.filter(record =>
     record.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -201,9 +210,21 @@ export default function DoctorMedicalPage() {
         return 'secondary';
       case 'Diagnosis':
         return 'outline';
+      case 'Follow-up':
+        return 'destructive';
       default:
         return 'outline';
     }
+  };
+
+  const handleViewRecord = (record: MedicalRecord) => {
+    setSelectedRecord(record);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedRecord(null);
   };
 
   return (
@@ -227,41 +248,55 @@ export default function DoctorMedicalPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Record ID</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRecords.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.id}</TableCell>
-                  <TableCell>
-                    <span>{record.patient.name}</span>
-                  </TableCell>
-                  <TableCell>{record.date}</TableCell>
-                  <TableCell>
-                    <Badge variant={getBadgeVariant(record.type)}>{record.type}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">{record.details}</TableCell>
-                  <TableCell className="text-right">
-                    <Dialog>
-                      <DialogTrigger asChild>
-                         <Button variant="ghost" size="sm">View</Button>
-                      </DialogTrigger>
-                      <MedicalRecordModal record={record} />
-                    </Dialog>
-                  </TableCell>
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <div className="text-muted-foreground">Loading medical records...</div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Record ID</TableHead>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Details</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredRecords.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell className="font-medium">{record.id}</TableCell>
+                    <TableCell>
+                      <span>{record.patient.name}</span>
+                    </TableCell>
+                    <TableCell>{record.date}</TableCell>
+                    <TableCell>
+                      <Badge variant={getBadgeVariant(record.type)}>{record.type}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{record.details}</TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleViewRecord(record)}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredRecords.length === 0 && !loading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No medical records found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">
@@ -269,6 +304,10 @@ export default function DoctorMedicalPage() {
             </div>
         </CardFooter>
       </Card>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <MedicalRecordModal record={selectedRecord} onClose={handleCloseModal} />
+      </Dialog>
     </DashboardLayout>
   );
 }

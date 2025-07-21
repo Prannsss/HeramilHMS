@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/dashboard-layout';
 import {
   Card,
@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { MoreHorizontal, Search, Eye, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +41,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const medicalRecords = [
+// Fallback data in case API fails
+const fallbackMedicalRecords = [
   {
     id: 'REC001',
     patient: { name: 'Amelia Johnson' },
@@ -49,6 +51,7 @@ const medicalRecords = [
     dateOfAdmission: '2023-06-12',
     type: 'Prescription',
     details: 'Lisinopril 10mg for hypertension.',
+    file_path: null,
     bill: {
         invoiceId: 'INV-2023-001',
         status: 'Paid',
@@ -57,6 +60,7 @@ const medicalRecords = [
             { description: 'Medication - Lisinopril', amount: '$25.00' },
         ],
     },
+    record_id: 1,
   },
   {
     id: 'REC002',
@@ -66,11 +70,13 @@ const medicalRecords = [
     dateOfAdmission: '2023-06-08',
     type: 'Test Result',
     details: 'Blood Panel: All levels normal.',
+    file_path: null,
     bill: {
         invoiceId: 'INV-2023-002',
         status: 'Unpaid',
         items: [{ description: 'Lab Test - Blood Panel', amount: '$100.75' }],
     },
+    record_id: 2,
   },
   {
     id: 'REC003',
@@ -80,49 +86,24 @@ const medicalRecords = [
     dateOfAdmission: '2023-05-15',
     type: 'Diagnosis',
     details: 'Diagnosed with seasonal allergies.',
+    file_path: null,
      bill: {
         invoiceId: 'INV-2023-003',
         status: 'Paid',
         items: [{ description: 'Consultation', amount: '$100.00' }],
     },
-  },
-  {
-    id: 'REC004',
-    patient: { name: 'Daniel Evans' },
-    doctor: 'Dr. Evelyn Reed',
-    date: '2023-06-22',
-    dateOfAdmission: '2023-06-18',
-    type: 'Prescription',
-    details: 'Amoxicillin 500mg for infection.',
-     bill: {
-        invoiceId: 'INV-2023-004',
-        status: 'Pending',
-        items: [
-            { description: 'Follow-up Visit', amount: '$50.00' },
-            { description: 'Medication - Amoxicillin', amount: '$25.50' },
-        ],
-    },
-  },
-  {
-    id: 'REC005',
-    patient: { name: 'Evelyn Foster' },
-    doctor: 'Dr. Kenji Tanaka',
-    date: '2023-06-25',
-    dateOfAdmission: '2023-05-28',
-    type: 'Test Result',
-    details: 'X-Ray: No fractures detected.',
-     bill: {
-        invoiceId: 'INV-2023-005',
-        status: 'Unpaid',
-        items: [{ description: 'X-Ray', amount: '$180.00' }],
-    },
-  },
+    record_id: 3,
+  }
 ];
 
-type MedicalRecord = typeof medicalRecords[0];
+type MedicalRecord = typeof fallbackMedicalRecords[0];
 
 function MedicalRecordModal({ record }: { record: MedicalRecord }) {
-  const totalAmount = record.bill.items.reduce((total, item) => total + parseFloat(item.amount.replace('$', '')), 0).toFixed(2);
+  const totalAmount = record.bill.items.reduce((total, item) => {
+    // Handle both $ and ₱ currency symbols
+    const amount = item.amount.replace(/[$₱,]/g, '');
+    return total + parseFloat(amount);
+  }, 0).toFixed(2);
   
   return (
     <DialogContent className="sm:max-w-lg">
@@ -182,7 +163,7 @@ function MedicalRecordModal({ record }: { record: MedicalRecord }) {
             </div>
             <div className="flex justify-between font-bold text-lg border-t pt-2 mt-4">
                 <span>Total Amount</span>
-                <span>${totalAmount}</span>
+                <span>₱{totalAmount}</span>
             </div>
         </div>
       </div>
@@ -194,8 +175,33 @@ function MedicalRecordModal({ record }: { record: MedicalRecord }) {
 
 
 export default function AdminMedicalPage() {
-  const [records, setRecords] = useState<MedicalRecord[]>(medicalRecords);
+  const [records, setRecords] = useState<MedicalRecord[]>(fallbackMedicalRecords);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch medical records from API
+  const fetchMedicalRecords = async () => {
+    try {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/medical-records.php');
+      const result = await response.json();
+      
+      if (result.status === 'success') {
+        setRecords(result.data);
+      } else {
+        setError(result.message || 'Failed to fetch medical records');
+      }
+    } catch (err) {
+      setError('Error connecting to server - using fallback data');
+      console.error('Medical Records API Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMedicalRecords();
+  }, []);
 
   const filteredRecords = records.filter(record =>
     record.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -217,8 +223,18 @@ export default function AdminMedicalPage() {
   };
 
   const handlePrint = (record: MedicalRecord) => {
+    const totalAmount = record.bill.items.reduce((total, item) => {
+      const amount = item.amount.replace(/[$₱,]/g, '');
+      return total + parseFloat(amount);
+    }, 0).toFixed(2);
+
+    const billItemsText = record.bill.items.map(item => 
+      `  ${item.description}: ${item.amount}`
+    ).join('\n');
+
     const recordContent = `
                         Heramil Hospital
+                      Medical Record Report
 
 ---------------------------------------------------------
 
@@ -226,7 +242,7 @@ Record ID: ${record.id}
 Patient: ${record.patient.name}
 Doctor: ${record.doctor}
 Date of Admission: ${record.dateOfAdmission}
-Date: ${record.date}
+Record Date: ${record.date}
 Type: ${record.type}
 
 ---------------------------------------------------------
@@ -234,6 +250,19 @@ Type: ${record.type}
 Details:
 ${record.details}
 
+---------------------------------------------------------
+
+Billing Information:
+Invoice ID: ${record.bill.invoiceId}
+Bill Status: ${record.bill.status}
+
+Invoice Items:
+${billItemsText}
+
+Total Amount: ₱${totalAmount}
+
+---------------------------------------------------------
+Generated on: ${new Date().toLocaleString()}
 `;
     const blob = new Blob([recordContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -254,6 +283,11 @@ ${record.details}
           <CardTitle>All Records</CardTitle>
           <CardDescription>
             A comprehensive list of all patient medical records.
+            {error && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                <strong>Note:</strong> {error}
+              </div>
+            )}
           </CardDescription>
            <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
@@ -268,6 +302,42 @@ ${record.details}
           </div>
         </CardHeader>
         <CardContent>
+          {loading ? (
+            <div className="space-y-4">
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Record ID</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Doctor</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[...Array(3)].map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-[40px] ml-auto" /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ) : filteredRecords.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No medical records found matching your search criteria.
+            </div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -323,6 +393,7 @@ ${record.details}
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
         <CardFooter>
             <div className="text-xs text-muted-foreground">

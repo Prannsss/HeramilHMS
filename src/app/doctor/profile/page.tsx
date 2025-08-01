@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Pen } from 'lucide-react';
+import { Loader2, Pen, Eye, EyeOff } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import type { Point, Area } from 'react-easy-crop';
 
@@ -65,8 +65,12 @@ const passwordFormSchema = z
 
 function ChangePasswordModal() {
     const { toast } = useToast();
+    const { user } = useUserStore();
     const [isPasswordLoading, setIsPasswordLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const passwordForm = useForm<z.infer<typeof passwordFormSchema>>({
         resolver: zodResolver(passwordFormSchema),
@@ -77,18 +81,61 @@ function ChangePasswordModal() {
         },
     });
 
-    function onPasswordSubmit(values: z.infer<typeof passwordFormSchema>) {
-        setIsPasswordLoading(true);
-        setTimeout(() => {
-            console.log(values);
+    async function onPasswordSubmit(values: z.infer<typeof passwordFormSchema>) {
+        if (!user?.doctor_id) {
             toast({
-                title: 'Password Changed',
-                description: 'Your password has been successfully changed.',
+                title: 'Error',
+                description: 'Doctor ID not found. Please log in again.',
+                variant: 'destructive',
+                duration: 3000,
             });
-            passwordForm.reset();
+            return;
+        }
+
+        setIsPasswordLoading(true);
+        
+        try {
+            const response = await fetch('http://localhost/HeramilHMS/public/backend/api/change-password.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    doctor_id: user.doctor_id,
+                    current_password: values.currentPassword,
+                    new_password: values.newPassword,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                toast({
+                    title: 'Password Changed',
+                    description: 'Your password has been successfully changed.',
+                    duration: 3000,
+                });
+                passwordForm.reset();
+                setIsOpen(false);
+            } else {
+                toast({
+                    title: 'Error',
+                    description: data.message || 'Failed to change password.',
+                    variant: 'destructive',
+                    duration: 3000,
+                });
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to change password. Please try again.',
+                variant: 'destructive',
+                duration: 3000,
+            });
+        } finally {
             setIsPasswordLoading(false);
-            setIsOpen(false);
-        }, 1500);
+        }
     }
 
     return (
@@ -112,7 +159,25 @@ function ChangePasswordModal() {
                             <FormItem>
                                 <FormLabel>Current Password</FormLabel>
                                 <FormControl>
-                                <Input type="password" {...field} />
+                                    <div className="relative">
+                                        <Input 
+                                            type={showCurrentPassword ? "text" : "password"} 
+                                            {...field} 
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 hover:text-black"
+                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                        >
+                                            {showCurrentPassword ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -125,7 +190,25 @@ function ChangePasswordModal() {
                             <FormItem>
                                 <FormLabel>New Password</FormLabel>
                                 <FormControl>
-                                <Input type="password" {...field} />
+                                    <div className="relative">
+                                        <Input 
+                                            type={showNewPassword ? "text" : "password"} 
+                                            {...field} 
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 hover:text-black"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                        >
+                                            {showNewPassword ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -138,7 +221,25 @@ function ChangePasswordModal() {
                             <FormItem>
                                 <FormLabel>Confirm New Password</FormLabel>
                                 <FormControl>
-                                <Input type="password" {...field} />
+                                    <div className="relative">
+                                        <Input 
+                                            type={showConfirmPassword ? "text" : "password"} 
+                                            {...field} 
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 hover:text-black"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        >
+                                            {showConfirmPassword ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -223,31 +324,27 @@ function ImageCropper({ image, onCropComplete, onCancel }: { image: string, onCr
 
 export default function DoctorProfilePage() {
     const { toast } = useToast();
-    const [isProfileLoading, setIsProfileLoading] = useState(false);
-    const { avatar, setAvatar } = useUserStore();
+    const { avatar, setAvatar, user } = useUserStore();
     const [imageToCrop, setImageToCrop] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const profileForm = useForm<z.infer<typeof profileFormSchema>>({
         resolver: zodResolver(profileFormSchema),
         defaultValues: {
-            name: 'Dr. Evelyn Reed',
-            email: 'e.reed@email.com',
-            specialization: 'Cardiologist',
+            name: user?.name || '',
+            email: user?.email || '',
+            specialization: user?.specialization || '',
         },
     });
 
-    function onProfileSubmit(values: z.infer<typeof profileFormSchema>) {
-        setIsProfileLoading(true);
-        setTimeout(() => {
-            console.log(values);
-            toast({
-                title: 'Profile Updated',
-                description: 'Your profile information has been successfully updated.',
-            });
-            setIsProfileLoading(false);
-        }, 1500);
-    }
+    // Update form values when user data changes
+    useEffect(() => {
+        if (user) {
+            profileForm.setValue('name', user.name || '');
+            profileForm.setValue('email', user.email || '');
+            profileForm.setValue('specialization', user.specialization || '');
+        }
+    }, [user, profileForm]);
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -274,6 +371,7 @@ export default function DoctorProfilePage() {
         toast({
             title: "Profile Picture Updated",
             description: "Your new profile picture has been saved.",
+            duration: 3000,
         });
     };
 
@@ -326,11 +424,11 @@ export default function DoctorProfilePage() {
                 <div className="lg:col-span-2 space-y-8">
                     <Card>
                         <Form {...profileForm}>
-                            <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
+                            <div>
                                 <CardHeader>
                                     <CardTitle>Personal Information</CardTitle>
                                     <CardDescription>
-                                        Update your name, email, and specialization.
+                                        Your profile information (read-only).
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
@@ -341,7 +439,7 @@ export default function DoctorProfilePage() {
                                             <FormItem>
                                                 <FormLabel>Full Name</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} />
+                                                    <Input {...field} readOnly className="bg-muted" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -354,7 +452,7 @@ export default function DoctorProfilePage() {
                                             <FormItem>
                                                 <FormLabel>Email Address</FormLabel>
                                                 <FormControl>
-                                                    <Input type="email" {...field} />
+                                                    <Input type="email" {...field} readOnly className="bg-muted" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -367,23 +465,17 @@ export default function DoctorProfilePage() {
                                             <FormItem>
                                                 <FormLabel>Specialization</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} />
+                                                    <Input {...field} readOnly className="bg-muted" />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </CardContent>
-                                <CardFooter className="flex justify-between">
-                                    <Button type="submit" disabled={isProfileLoading}>
-                                        {isProfileLoading && (
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        )}
-                                        Save Changes
-                                    </Button>
+                                <CardFooter className="flex justify-end">
                                     <ChangePasswordModal />
                                 </CardFooter>
-                            </form>
+                            </div>
                         </Form>
                     </Card>
                 </div>

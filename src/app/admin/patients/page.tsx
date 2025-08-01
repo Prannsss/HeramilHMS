@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { Eye, PlusCircle, Search, MoreHorizontal, LogOut } from "lucide-react";
+import { Eye, PlusCircle, Search, MoreHorizontal, LogOut, Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import {
   Card,
@@ -46,7 +46,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 // Fallback data in case API fails
-const fallbackPatients = [
+const fallbackPatients: Patient[] = [
   {
     id: "PAT001",
     name: "Amelia Johnson",
@@ -55,7 +55,7 @@ const fallbackPatients = [
     address: "123 Maple St, Springfield, IL",
     dob: "1985-04-12",
     lastVisit: "2023-06-15",
-    status: "Active" as const,
+    status: "Active",
     doctor: "Dr. Evelyn Reed",
     bloodType: "A+",
     allergies: "Peanuts",
@@ -63,7 +63,7 @@ const fallbackPatients = [
     reasonForAdmission: "Routine Check-up",
     dateOfDischarge: null,
     prescriptions: ["Lisinopril 10mg for hypertension."],
-    usedItems: [] as any[],
+    usedItems: [],
     billItems: [
         { description: "Consultation Fee", amount: "$150.00" },
         { description: "Medication - Lisinopril", amount: "$25.00" },
@@ -77,15 +77,17 @@ const fallbackPatients = [
     address: "456 Oak Ave, Metropolis, CA",
     dob: "1992-08-25",
     lastVisit: "2023-06-10",
-    status: "Active" as const,
+    status: "Admitted",
     doctor: "Dr. Kenji Tanaka",
     bloodType: "O-",
     allergies: "None",
     dateOfAdmission: "2023-06-08",
     reasonForAdmission: "Fractured Arm",
+    floorNumber: "1",
+    roomNumber: "101",
     dateOfDischarge: null,
-    prescriptions: [] as string[],
-    usedItems: [] as any[],
+    prescriptions: [],
+    usedItems: [],
     billItems: [{ description: "Lab Test - Blood Panel", amount: "$100.00" }],
   },
   {
@@ -96,24 +98,41 @@ const fallbackPatients = [
     address: "789 Pine Ln, Gotham, NY",
     dob: "1978-11-02",
     lastVisit: "2023-05-20",
-    status: "Discharged" as const,
+    status: "Discharged",
     doctor: "Dr. Evelyn Reed",
     bloodType: "B+",
     allergies: "Pollen",
     dateOfAdmission: "2023-05-15",
     reasonForAdmission: "Minor Surgery",
     dateOfDischarge: "2023-05-20",
-    prescriptions: [] as string[],
-    usedItems: [] as any[],
+    prescriptions: [],
+    usedItems: [],
     billItems: [{ description: "Emergency Room Visit", amount: "$200.00" }, {description: "Medication", amount: "$100.00"}],
   }
 ];
 
-type Patient = typeof fallbackPatients[0] & {
+interface Patient {
+  id: string;
   patient_id?: number;
-  status: 'Active' | 'Discharged';
+  name: string;
+  email: string;
+  mobile: string;
+  address: string;
+  dob: string;
+  lastVisit: string;
+  status: 'Active' | 'Admitted' | 'Discharged';
+  doctor: string;
+  bloodType: string;
+  allergies: string;
+  dateOfAdmission: string;
+  reasonForAdmission: string;
   dateOfDischarge?: string | null;
-};
+  floorNumber?: string;
+  roomNumber?: string;
+  prescriptions: string[];
+  usedItems: any[];
+  billItems: { description: string; amount: string; }[];
+}
 
 function PatientTable({ patients, onPatientSelect, onDischarge, loading, dischargingPatient }: { 
   patients: Patient[], 
@@ -145,7 +164,7 @@ function PatientTable({ patients, onPatientSelect, onDischarge, loading, dischar
           <TableHead>Patient</TableHead>
           <TableHead>Patient ID</TableHead>
           <TableHead>Date of Admission</TableHead>
-          <TableHead>Last Visit</TableHead>
+          <TableHead>Floor & Room</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -166,9 +185,25 @@ function PatientTable({ patients, onPatientSelect, onDischarge, loading, dischar
             </TableCell>
             <TableCell>{patient.id}</TableCell>
             <TableCell>{patient.dateOfAdmission}</TableCell>
-            <TableCell>{patient.lastVisit}</TableCell>
             <TableCell>
-              <Badge variant={patient.status === 'Active' ? 'secondary' : 'outline'}>
+              {patient.status === 'Admitted' && patient.floorNumber && patient.roomNumber && 
+               patient.floorNumber !== 'N/A' && patient.roomNumber !== 'N/A'
+                ? `${patient.floorNumber}F${patient.roomNumber}R`
+                : patient.status === 'Admitted' 
+                ? 'Awaiting assignment'
+                : 'N/A'
+              }
+            </TableCell>
+            <TableCell>
+              <Badge variant={
+                patient.status === 'Active' ? 'default' : 
+                patient.status === 'Admitted' ? 'default' : 
+                'destructive'
+              } className={
+                patient.status === 'Active' ? 'bg-green-600 hover:bg-green-700' : 
+                patient.status === 'Admitted' ? 'bg-blue-600 hover:bg-blue-700' : 
+                'bg-red-600 hover:bg-red-700'
+              }>
                   {patient.status}
               </Badge>
             </TableCell>
@@ -185,7 +220,7 @@ function PatientTable({ patients, onPatientSelect, onDischarge, loading, dischar
                     <DropdownMenuItem onClick={() => onPatientSelect(patient)}>
                       <Eye className="mr-2 h-4 w-4" /> View Details
                     </DropdownMenuItem>
-                    {patient.status === 'Active' && (
+                    {(patient.status === 'Active' || patient.status === 'Admitted') && (
                         <DropdownMenuItem 
                           onClick={() => onDischarge(patient.id)}
                           disabled={dischargingPatient === patient.id}
@@ -215,7 +250,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Patient Information</DialogTitle>
           <DialogDescription>Details for {patient.name}.</DialogDescription>
@@ -250,6 +285,13 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
                     <p className="font-medium text-muted-foreground">Date of Admission</p>
                     <p>{patient.dateOfAdmission}</p>
                 </div>
+                {patient.status === 'Admitted' && patient.floorNumber && patient.roomNumber && 
+                 patient.floorNumber !== 'N/A' && patient.roomNumber !== 'N/A' && (
+                    <div>
+                        <p className="font-medium text-muted-foreground">Floor & Room</p>
+                        <p>{patient.floorNumber}FR{patient.roomNumber}</p>
+                    </div>
+                )}
                 {patient.status === 'Discharged' && patient.dateOfDischarge && (
                     <div>
                         <p className="font-medium text-muted-foreground">Date of Discharge</p>
@@ -412,6 +454,7 @@ export default function AdminPatientsPage() {
   );
 
   const activePatients = filteredPatients.filter(p => p.status === 'Active');
+  const admittedPatients = filteredPatients.filter(p => p.status === 'Admitted');
   const dischargedPatients = filteredPatients.filter(p => p.status === 'Discharged');
 
   return (
@@ -443,11 +486,21 @@ export default function AdminPatientsPage() {
           <Tabs defaultValue="active">
             <TabsList>
               <TabsTrigger value="active">Active ({activePatients.length})</TabsTrigger>
+              <TabsTrigger value="admitted">Admitted ({admittedPatients.length})</TabsTrigger>
               <TabsTrigger value="discharged">Discharged ({dischargedPatients.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="active">
               <PatientTable 
                 patients={activePatients} 
+                onPatientSelect={handlePatientSelect} 
+                onDischarge={handleDischarge} 
+                loading={loading}
+                dischargingPatient={dischargingPatient}
+              />
+            </TabsContent>
+            <TabsContent value="admitted">
+              <PatientTable 
+                patients={admittedPatients} 
                 onPatientSelect={handlePatientSelect} 
                 onDischarge={handleDischarge} 
                 loading={loading}

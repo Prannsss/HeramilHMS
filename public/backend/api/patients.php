@@ -28,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 p.status,
                 p.date_of_admission,
                 p.reason_for_admission,
+                p.floor_number,
+                p.room_number,
                 p.date_of_discharge,
                 MAX(a.appointment_datetime) as last_visit,
                 d.name as doctor_name
@@ -102,6 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'allergies' => $row['allergies'] ?: 'None',
                 'dateOfAdmission' => $row['date_of_admission'] ?: date('Y-m-d'),
                 'reasonForAdmission' => $row['reason_for_admission'] ?: 'General consultation',
+                'floorNumber' => $row['floor_number'] ?: 'N/A',
+                'roomNumber' => $row['room_number'] ?: 'N/A',
                 'dateOfDischarge' => $row['date_of_discharge'],
                 'prescriptions' => $prescriptions,
                 'usedItems' => [], // Can be populated later if needed
@@ -130,33 +134,175 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $action = $input['action'];
         
         if ($action === 'discharge') {
-            // Update patient status to Discharged and set discharge date
-            $discharge_query = "
-                UPDATE patients 
-                SET status = 'Discharged', 
-                    date_of_discharge = CURDATE() 
-                WHERE patient_id = ?
-            ";
+            // Start transaction
+            $conn->begin_transaction();
             
-            $stmt = $conn->prepare($discharge_query);
-            $stmt->bind_param("i", $patient_id);
-            
-            if ($stmt->execute()) {
-                if ($stmt->affected_rows > 0) {
-                    echo json_encode([
-                        'status' => 'success',
-                        'message' => 'Patient discharged successfully'
-                    ]);
-                } else {
-                    echo json_encode([
-                        'status' => 'error',
-                        'message' => 'Patient not found or already discharged'
-                    ]);
+            try {
+                // Update patient status to Discharged and set discharge date
+                $discharge_query = "
+                    UPDATE patients 
+                    SET status = 'Discharged', 
+                        date_of_discharge = CURDATE(),
+                        floor_number = 'N/A',
+                        room_number = 'N/A'
+                    WHERE patient_id = ?
+                ";
+                
+                $stmt = $conn->prepare($discharge_query);
+                $stmt->bind_param("i", $patient_id);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to discharge patient: ' . $stmt->error);
                 }
-            } else {
+                
+                if ($stmt->affected_rows === 0) {
+                    throw new Exception('Patient not found or already discharged');
+                }
+                
+                // Update room status to vacant and remove patient assignment
+                $room_update_query = "
+                    UPDATE rooms 
+                    SET status = 'Vacant', patient_id = NULL 
+                    WHERE patient_id = ?
+                ";
+                $room_stmt = $conn->prepare($room_update_query);
+                $room_stmt->bind_param("i", $patient_id);
+                
+                if (!$room_stmt->execute()) {
+                    // Log the error but don't fail the discharge process
+                    error_log("Warning: Failed to update room status during patient discharge for patient_id: $patient_id");
+                }
+                
+                $conn->commit();
+                
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Patient discharged successfully'
+                ]);
+                
+            } catch (Exception $e) {
+                $conn->rollback();
                 echo json_encode([
                     'status' => 'error',
-                    'message' => 'Failed to discharge patient: ' . $stmt->error
+                    'message' => $e->getMessage()
+                ]);
+            }
+        } else if ($action === 'admit') {
+            // Handle patient admission with room assignment
+            $floor_number = $input['floor_number'] ?? 'N/A';
+            $room_number = $input['room_number'] ?? 'N/A';
+            $reason_for_admission = $input['reason_for_admission'] ?? 'Admission';
+            $admission_date = $input['admission_date'] ?? date('Y-m-d');
+            
+            // Start transaction
+            $conn->begin_transaction();
+            
+            try {
+                // Update patient status to Admitted
+                $admit_query = "
+                    UPDATE patients 
+                    SET status = 'Admitted', 
+                        date_of_admission = ?,
+                        reason_for_admission = ?,
+                        floor_number = ?,
+                        room_number = ?,
+                        date_of_discharge = NULL
+                    WHERE patient_id = ?
+                ";
+                
+                $stmt = $conn->prepare($admit_query);
+                $stmt->bind_param("ssssi", $admission_date, $reason_for_admission, $floor_number, $room_number, $patient_id);
+                
+                if (!$stmt->execute()) {
+                    throw new Exception('Failed to admit patient: ' . $stmt->error);
+                }
+                
+                if ($stmt->affected_rows === 0) {
+                    throw new Exception('Patient not found');
+                }
+                
+                // Update room status if room information is provided and not N/A
+                if ($floor_number !== 'N/A' && $room_number !== 'N/A') {
+                    // Find the room by floor and room number
+                    $room_query = "SELECT room_id, status FROM rooms WHERE floor = ? AND room_number = ?";
+                    $room_stmt = $conn->prepare($room_query);
+                    $room_stmt->bind_param("is", $floor_number, $room_number);
+                    $room_stmt->execute();
+                    $room_result = $room_stmt->get_result();
+                    
+                    if ($room_result->num_rows > 0) {
+                        $room_data = $room_result->fetch_assoc();
+                        $room_id = $room_data['room_id'];
+                        $current_status = $room_data['status'];
+                        
+                        // Check if room is available or force update
+                        if ($current_status === 'Vacant' || true) { // Allow override for manual admin changes
+                            // Update room to occupied and assign patient
+                            $update_room_query = "UPDATE rooms SET status = 'Occupied', patient_id = ? WHERE room_id = ?";
+                            $update_room_stmt = $conn->prepare($update_room_query);
+                            $update_room_stmt->bind_param("ii", $patient_id, $room_id);
+                            
+                            if (!$update_room_stmt->execute()) {
+                                error_log("Warning: Failed to update room status during patient admission for patient_id: $patient_id");
+                            }
+                        }
+                    } else {
+                        error_log("Warning: Room $room_number on floor $floor_number does not exist in rooms table");
+                    }
+                }
+                
+                $conn->commit();
+                
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Patient admitted successfully'
+                ]);
+                
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => $e->getMessage()
+                ]);
+            }
+        } else if ($action === 'sync_rooms') {
+            // Synchronize rooms table with patient data
+            try {
+                // Start transaction
+                $conn->begin_transaction();
+                
+                // Clear all room assignments first
+                $clear_rooms_query = "UPDATE rooms SET status = 'Vacant', patient_id = NULL WHERE status != 'Maintenance'";
+                $conn->query($clear_rooms_query);
+                
+                // Update patient room info to N/A for discharged patients
+                $clear_discharged_query = "UPDATE patients SET floor_number = 'N/A', room_number = 'N/A' WHERE status = 'Discharged' AND (floor_number != 'N/A' OR room_number != 'N/A')";
+                $conn->query($clear_discharged_query);
+                
+                // Reassign rooms based on admitted patients with room assignments
+                $sync_query = "
+                    UPDATE rooms r
+                    JOIN patients p ON r.room_number = p.room_number AND r.floor = p.floor_number
+                    SET r.status = 'Occupied', r.patient_id = p.patient_id
+                    WHERE p.status = 'Admitted' 
+                    AND p.floor_number != 'N/A' 
+                    AND p.room_number != 'N/A'
+                    AND r.status = 'Vacant'
+                ";
+                $conn->query($sync_query);
+                
+                $conn->commit();
+                
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Room synchronization completed successfully'
+                ]);
+                
+            } catch (Exception $e) {
+                $conn->rollback();
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Failed to synchronize rooms: ' . $e->getMessage()
                 ]);
             }
         } else {

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, Undo2, AlertCircle } from 'lucide-react';
 import DashboardLayout from '@/components/dashboard-layout';
 import { PageHeader } from '@/components/page-header';
+import { useUserStore } from '@/hooks/use-user-store';
 import {
   Card,
   CardContent,
@@ -26,9 +27,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-
-// Current logged-in doctor (in real app, this would come from authentication)
-const CURRENT_DOCTOR_ID = 1; // Dr. Jayson Ado
 
 type AppointmentStatus = 'Upcoming' | 'Done' | 'Rejected';
 
@@ -172,18 +170,27 @@ export default function DoctorAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user, hasHydrated } = useUserStore();
 
   // Fetch appointments on component mount
   useEffect(() => {
+    if (!hasHydrated) return; // Wait for store to hydrate
+    
     fetchAppointments();
-  }, []);
+  }, [hasHydrated, user?.doctor_id]);
 
   const fetchAppointments = async () => {
+    if (!user?.doctor_id) {
+      setError('Doctor information not available');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-appointments.php?doctor_id=${CURRENT_DOCTOR_ID}`);
+      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-appointments.php?doctor_id=${user.doctor_id}`);
       const data = await response.json();
       
       if (data.success === true) {

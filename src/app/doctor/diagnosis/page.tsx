@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2, Sparkles, Check, ChevronsUpDown } from 'lucide-react';
+import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
 
 import DashboardLayout from '@/components/dashboard-layout';
 import { PageHeader } from '@/components/page-header';
@@ -29,8 +29,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Textarea } from '@/components/ui/textarea';
-import { aiDiagnosisSupport } from '@/ai/flows/ai-diagnosis-support';
 import { useToast } from '@/hooks/use-toast';
+import { useUserStore } from '@/hooks/use-user-store';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 // Types for API response
@@ -116,11 +117,14 @@ function PatientCombobox({ patients, field }: { patients: Patient[], field: any 
   )
 }
 
-export default function AiDiagnosisPage() {
+export default function DiagnosisPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const { toast } = useToast();
+  const { user, isAuthenticated, getDoctorId, hasHydrated } = useUserStore();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -130,69 +134,62 @@ export default function AiDiagnosisPage() {
     },
   });
 
-  // Fetch patients from API
+  // Check authentication once the store is hydrated
   useEffect(() => {
-    async function fetchPatients() {
-      try {
-        const response = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-diagnosis.php?action=patients');
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          setPatients(data.data);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to load patients: ' + data.message,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching patients:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to load patients. Please check your connection.',
-        });
-      } finally {
-        setIsLoadingPatients(false);
-      }
+    if (!hasHydrated) return; // Wait for store to hydrate
+    
+    // Check if user is authenticated and is a doctor
+    if (!isAuthenticated() || user?.role !== 'Doctor') {
+      router.push('/');
+      return;
     }
 
-    fetchPatients();
-  }, [toast]);
-
-  const selectedPatientId = form.watch('patientId');
-  const selectedPatient = patients.find(p => p.id === selectedPatientId);
-
-  async function handleGenerateDiagnosis() {
-    if (!selectedPatient) {
+    const doctorId = getDoctorId();
+    if (!doctorId) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Please select a patient first.',
+        title: 'Authentication Error',
+        description: 'No doctor ID found in authentication',
+        duration: 3000,
       });
       return;
     }
 
-    setIsLoading(true);
+    setIsAuthChecked(true);
+    fetchPatients(doctorId);
+  }, [hasHydrated, user, isAuthenticated, getDoctorId, router]);
+
+  // Fetch patients from API
+  async function fetchPatients(doctorId: number) {
     try {
-      const result = await aiDiagnosisSupport({ symptoms: selectedPatient.reasonForAdmission });
-      if (result.diagnosis) {
-        form.setValue('diagnosis', result.diagnosis);
+      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-diagnosis.php?action=patients&doctor_id=${doctorId}`);
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setPatients(data.data);
       } else {
-        throw new Error('Failed to get diagnosis suggestions.');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to load patients: ' + data.message,
+          duration: 3000,
+        });
       }
     } catch (error) {
-      console.error(error);
+      console.error('Error fetching patients:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Could not generate a diagnosis. Please try again.',
+        description: 'Failed to load patients. Please check your connection.',
+        duration: 3000,
       });
     } finally {
-      setIsLoading(false);
+      setIsLoadingPatients(false);
     }
   }
+
+  const selectedPatientId = form.watch('patientId');
+  const selectedPatient = patients.find(p => p.id === selectedPatientId);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!selectedPatient) {
@@ -200,6 +197,18 @@ export default function AiDiagnosisPage() {
         variant: 'destructive',
         title: 'Error',
         description: 'Please select a patient.',
+        duration: 3000,
+      });
+      return;
+    }
+
+    const doctorId = getDoctorId();
+    if (!doctorId) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'Doctor ID not found. Please log in again.',
+        duration: 3000,
       });
       return;
     }
@@ -213,7 +222,7 @@ export default function AiDiagnosisPage() {
         },
         body: JSON.stringify({
           patient_id: selectedPatient.patient_id,
-          doctor_id: 1, // TODO: Get from user session/context
+          doctor_id: doctorId,
           diagnosis: values.diagnosis,
           record_type: 'Diagnosis'
         }),
@@ -225,6 +234,7 @@ export default function AiDiagnosisPage() {
         toast({
           title: "Diagnosis Saved",
           description: `The diagnosis for ${selectedPatient.name} has been saved successfully.`,
+          duration: 3000,
         });
         
         // Reset form
@@ -234,6 +244,7 @@ export default function AiDiagnosisPage() {
           variant: 'destructive',
           title: 'Error',
           description: 'Failed to save diagnosis: ' + data.message,
+          duration: 3000,
         });
       }
     } catch (error) {
@@ -242,6 +253,7 @@ export default function AiDiagnosisPage() {
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to save diagnosis. Please try again.',
+        duration: 3000,
       });
     } finally {
       setIsLoading(false);
@@ -252,13 +264,24 @@ export default function AiDiagnosisPage() {
     <DashboardLayout role="doctor">
       <PageHeader 
         title="Diagnosis" 
-        description="Generate AI-powered diagnosis suggestions and manage patient diagnoses"
+        description="Create and manage patient diagnoses"
       />
       
-      {isLoadingPatients ? (
+      {!hasHydrated || !isAuthChecked || isLoadingPatients ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <span className="ml-2">Loading patients...</span>
+          <span className="ml-2">
+            {!hasHydrated ? 'Initializing...' : !isAuthChecked ? 'Checking authentication...' : 'Loading patients...'}
+          </span>
+        </div>
+      ) : patients.length === 0 ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <h3 className="text-lg font-medium text-muted-foreground">No Patients Available</h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              You don't have any active patients assigned to you for diagnosis.
+            </p>
+          </div>
         </div>
       ) : (
         <Form {...form}>
@@ -323,7 +346,7 @@ export default function AiDiagnosisPage() {
                   <CardHeader>
                     <CardTitle>Diagnosis Notes</CardTitle>
                     <CardDescription>
-                      Write your diagnosis or generate one with AI.
+                      Write your diagnosis notes here.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow">
@@ -335,7 +358,7 @@ export default function AiDiagnosisPage() {
                           <FormLabel>Diagnosis</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Write your diagnosis here or click 'Generate with AI'."
+                              placeholder="Write your diagnosis here..."
                               className="h-full min-h-[250px]"
                               {...field}
                             />
@@ -345,20 +368,7 @@ export default function AiDiagnosisPage() {
                       )}
                     />
                   </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleGenerateDiagnosis}
-                      disabled={isLoading || !selectedPatient}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="mr-2 h-4 w-4" />
-                      )}
-                      Generate with AI
-                    </Button>
+                  <CardFooter className="flex justify-end">
                     <Button type="submit" disabled={isLoading || !selectedPatient}>
                       {isLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

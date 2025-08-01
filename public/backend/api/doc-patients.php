@@ -10,13 +10,98 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../db_connect.php';
+require_once 'auth_helpers.php';
+
+// Include the addMedicalEntry function
+function addMedicalEntry($conn, $data) {
+    try {
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            // Use the provided doctor_id if auth fails but data contains it
+            if (isset($data['doctor_id'])) {
+                $doctor_id = $data['doctor_id'];
+            } else {
+                throw new Exception('Unauthorized: Invalid or missing doctor authentication');
+            }
+        }
+        
+        $conn->autocommit(false);
+        
+        // Check if a record exists for this patient-doctor combination
+        $checkQuery = "SELECT record_id, record_entries FROM medical_records WHERE patient_id = ? AND doctor_id = ?";
+        $checkStmt = $conn->prepare($checkQuery);
+        $checkStmt->bind_param('ii', $data['patient_id'], $doctor_id);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $existingRecord = $result->fetch_assoc();
+        
+        $newEntry = [
+            'date' => $data['record_date'] ?? date('Y-m-d'),
+            'type' => $data['record_type'],
+            'details' => $data['details'],
+            'timestamp' => time()
+        ];
+        
+        if ($existingRecord) {
+            // Update existing record
+            $currentEntries = json_decode($existingRecord['record_entries'], true) ?: [];
+            $currentEntries[] = $newEntry;
+            
+            $updateQuery = "UPDATE medical_records SET record_entries = ?, last_updated = NOW() WHERE record_id = ?";
+            $updateStmt = $conn->prepare($updateQuery);
+            $entriesJson = json_encode($currentEntries);
+            $updateStmt->bind_param('si', $entriesJson, $existingRecord['record_id']);
+            
+            if (!$updateStmt->execute()) {
+                throw new Exception('Failed to update medical record: ' . $updateStmt->error);
+            }
+            
+            $recordId = $existingRecord['record_id'];
+        } else {
+            // Create new record
+            $insertQuery = "INSERT INTO medical_records (patient_id, doctor_id, created_date, record_entries) VALUES (?, ?, ?, ?)";
+            $insertStmt = $conn->prepare($insertQuery);
+            $entriesJson = json_encode([$newEntry]);
+            $createDate = $data['record_date'] ?? date('Y-m-d');
+            $insertStmt->bind_param('iiss', $data['patient_id'], $doctor_id, $createDate, $entriesJson);
+            
+            if (!$insertStmt->execute()) {
+                throw new Exception('Failed to create medical record: ' . $insertStmt->error);
+            }
+            
+            $recordId = $conn->insert_id;
+        }
+        
+        $conn->commit();
+        $conn->autocommit(true);
+        
+        return $recordId;
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        $conn->autocommit(true);
+        throw new Exception('Error adding medical entry: ' . $e->getMessage());
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['action'])) {
         if ($_GET['action'] === 'patients') {
             // Get patients assigned to a specific doctor
             try {
-                $doctor_id = isset($_GET['doctor_id']) ? intval($_GET['doctor_id']) : 1; // Default to doctor ID 1
+                // Get doctor ID from authentication
+                $doctor_id = getDoctorIdFromAuth();
+                
+                if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+                    http_response_code(401);
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Unauthorized: Invalid or missing doctor authentication'
+                    ]);
+                    exit;
+                }
                 
                 $query = "
                     SELECT DISTINCT
@@ -60,16 +145,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     // Format last visit date
                     $lastVisit = $row['last_visit'] ? date('Y-m-d', strtotime($row['last_visit'])) : null;
                     
-                    // Get prescriptions for this patient
-                    $prescriptions_query = "SELECT details FROM medical_records WHERE patient_id = ? AND record_type = 'Prescription' ORDER BY record_date DESC";
-                    $prescriptions_stmt = $conn->prepare($prescriptions_query);
-                    $prescriptions_stmt->bind_param("i", $row['patient_id']);
-                    $prescriptions_stmt->execute();
-                    $prescriptions_result = $prescriptions_stmt->get_result();
-                    
+                    // Get prescriptions for this patient (only by current doctor) - handle both old and new structure
                     $prescriptions = [];
-                    while ($prescription_row = $prescriptions_result->fetch_assoc()) {
-                        $prescriptions[] = $prescription_row['details'];
+                    
+                    // First try the new consolidated structure
+                    $new_prescriptions_query = "SELECT record_entries FROM medical_records WHERE patient_id = ? AND doctor_id = ? AND record_entries IS NOT NULL";
+                    $new_prescriptions_stmt = $conn->prepare($new_prescriptions_query);
+                    $new_prescriptions_stmt->bind_param("ii", $row['patient_id'], $doctor_id);
+                    $new_prescriptions_stmt->execute();
+                    $new_prescriptions_result = $new_prescriptions_stmt->get_result();
+                    
+                    while ($new_prescription_row = $new_prescriptions_result->fetch_assoc()) {
+                        $entries = json_decode($new_prescription_row['record_entries'], true) ?: [];
+                        foreach ($entries as $entry) {
+                            if ($entry['type'] === 'Prescription') {
+                                $prescriptions[] = $entry['details'];
+                            }
+                        }
+                    }
+                    
+                    // Fallback to old structure for compatibility
+                    $old_prescriptions_query = "SELECT details FROM medical_records WHERE patient_id = ? AND record_type = 'Prescription' AND doctor_id = ? AND record_entries IS NULL ORDER BY record_date DESC";
+                    $old_prescriptions_stmt = $conn->prepare($old_prescriptions_query);
+                    $old_prescriptions_stmt->bind_param("ii", $row['patient_id'], $doctor_id);
+                    $old_prescriptions_stmt->execute();
+                    $old_prescriptions_result = $old_prescriptions_stmt->get_result();
+                    
+                    while ($old_prescription_row = $old_prescriptions_result->fetch_assoc()) {
+                        $prescriptions[] = $old_prescription_row['details'];
                     }
                     
                     // Get billing information
@@ -196,8 +299,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 
                 $patient = $patient_result->fetch_assoc();
                 
-                // Get medical records (prescriptions and diagnoses)
-                $medical_query = "
+                // Get medical records (prescriptions and diagnoses) - handle both old and new structure
+                $prescriptions = [];
+                $diagnoses = [];
+                $other_records = [];
+                
+                // First get new consolidated structure
+                $new_medical_query = "
+                    SELECT 
+                        mr.record_id,
+                        mr.created_date,
+                        mr.last_updated,
+                        mr.record_entries,
+                        d.name as doctor_name
+                    FROM medical_records mr
+                    LEFT JOIN doctors d ON mr.doctor_id = d.doctor_id
+                    WHERE mr.patient_id = ? AND mr.record_entries IS NOT NULL
+                    ORDER BY mr.last_updated DESC, mr.record_id DESC
+                ";
+                
+                $new_medical_stmt = $conn->prepare($new_medical_query);
+                $new_medical_stmt->bind_param("i", $patient_id);
+                $new_medical_stmt->execute();
+                $new_medical_result = $new_medical_stmt->get_result();
+                
+                while ($record = $new_medical_result->fetch_assoc()) {
+                    $entries = json_decode($record['record_entries'], true) ?: [];
+                    foreach ($entries as $entry) {
+                        $record_data = [
+                            'id' => $record['record_id'] . '_' . $entry['timestamp'],
+                            'date' => $entry['date'],
+                            'type' => $entry['type'],
+                            'details' => $entry['details'],
+                            'doctor' => $record['doctor_name']
+                        ];
+                        
+                        if ($entry['type'] === 'Prescription') {
+                            $prescriptions[] = $record_data;
+                        } elseif ($entry['type'] === 'Diagnosis') {
+                            $diagnoses[] = $record_data;
+                        } else {
+                            $other_records[] = $record_data;
+                        }
+                    }
+                }
+                
+                // Get old structure records for backward compatibility
+                $old_medical_query = "
                     SELECT 
                         mr.record_id,
                         mr.record_date,
@@ -206,20 +354,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         d.name as doctor_name
                     FROM medical_records mr
                     LEFT JOIN doctors d ON mr.doctor_id = d.doctor_id
-                    WHERE mr.patient_id = ?
+                    WHERE mr.patient_id = ? AND mr.record_entries IS NULL
                     ORDER BY mr.record_date DESC, mr.record_id DESC
                 ";
                 
-                $medical_stmt = $conn->prepare($medical_query);
-                $medical_stmt->bind_param("i", $patient_id);
-                $medical_stmt->execute();
-                $medical_result = $medical_stmt->get_result();
+                $old_medical_stmt = $conn->prepare($old_medical_query);
+                $old_medical_stmt->bind_param("i", $patient_id);
+                $old_medical_stmt->execute();
+                $old_medical_result = $old_medical_stmt->get_result();
                 
-                $prescriptions = [];
-                $diagnoses = [];
-                $other_records = [];
-                
-                while ($record = $medical_result->fetch_assoc()) {
+                while ($record = $old_medical_result->fetch_assoc()) {
                     $record_data = [
                         'id' => $record['record_id'],
                         'date' => $record['record_date'],
@@ -387,15 +531,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->begin_transaction();
             
             try {
-                // Save prescription if provided
+                // Save prescription if provided using consolidated approach
                 if (!empty($prescription)) {
-                    $prescription_query = "
-                        INSERT INTO medical_records (patient_id, doctor_id, record_date, record_type, details)
-                        VALUES (?, ?, ?, 'Prescription', ?)
-                    ";
-                    $prescription_stmt = $conn->prepare($prescription_query);
-                    $prescription_stmt->bind_param("iiss", $patient_id, $doctor_id, $record_date, $prescription);
-                    $prescription_stmt->execute();
+                    $recordId = addMedicalEntry($conn, [
+                        'patient_id' => $patient_id,
+                        'doctor_id' => $doctor_id,
+                        'record_date' => $record_date,
+                        'record_type' => 'Prescription',
+                        'details' => $prescription
+                    ]);
+                    
+                    error_log("Prescription saved successfully: patient_id=$patient_id, doctor_id=$doctor_id, date=$record_date, record_id=$recordId");
                 }
                 
                 // Process used items

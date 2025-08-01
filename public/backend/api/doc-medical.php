@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../db_connect.php';
+require_once 'auth_helpers.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -34,6 +35,9 @@ try {
             if ($action === 'create_record') {
                 $data = json_decode(file_get_contents('php://input'), true);
                 createMedicalRecord($conn, $data);
+            } elseif ($action === 'add_entry') {
+                $data = json_decode(file_get_contents('php://input'), true);
+                addMedicalEntry($conn, $data);
             } else {
                 throw new Exception('Invalid action');
             }
@@ -49,12 +53,21 @@ try {
 
 function getMedicalRecords($conn) {
     try {
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+            return;
+        }
+        
         $query = "
             SELECT 
                 mr.record_id,
-                mr.record_date,
-                mr.record_type,
-                mr.details,
+                mr.created_date,
+                mr.last_updated,
+                mr.record_entries,
                 p.patient_id,
                 p.name as patient_name,
                 p.date_of_admission,
@@ -63,43 +76,64 @@ function getMedicalRecords($conn) {
                 b.total_amount,
                 b.status as bill_status,
                 b.bill_date,
-                CONCAT('INV-', YEAR(b.bill_date), '-', LPAD(b.bill_id, 3, '0')) as invoice_id
+                CONCAT('INV-', YEAR(COALESCE(b.bill_date, mr.created_date)), '-', LPAD(COALESCE(b.bill_id, mr.record_id), 3, '0')) as invoice_id
             FROM medical_records mr
             LEFT JOIN patients p ON mr.patient_id = p.patient_id
             LEFT JOIN doctors d ON mr.doctor_id = d.doctor_id
             LEFT JOIN bills b ON p.patient_id = b.patient_id 
-                AND DATE(b.bill_date) = DATE(mr.record_date)
-            ORDER BY mr.record_date DESC
+                AND DATE(b.bill_date) >= DATE(mr.created_date)
+            WHERE mr.doctor_id = ?
+            ORDER BY mr.last_updated DESC
         ";
         
-        $result = $conn->query($query);
+        $stmt = $conn->prepare($query);
+        if (!$stmt) {
+            throw new Exception('Database prepare failed: ' . $conn->error);
+        }
+        
+        $stmt->bind_param('i', $doctor_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
         if (!$result) {
             throw new Exception('Database query failed: ' . $conn->error);
         }
         
-        $records = [];
-        while ($row = $result->fetch_assoc()) {
-            $records[] = $row;
-        }
-        
-        // Format the records for frontend
         $formattedRecords = [];
-        foreach ($records as $record) {
-            $recordId = 'REC' . str_pad($record['record_id'], 3, '0', STR_PAD_LEFT);
+        while ($row = $result->fetch_assoc()) {
+            $recordId = 'REC' . str_pad($row['record_id'], 3, '0', STR_PAD_LEFT);
+            
+            // Parse the JSON record entries
+            $recordEntries = json_decode($row['record_entries'], true) ?: [];
+            
+            // Get the latest entry for display in the list
+            $latestEntry = end($recordEntries);
+            if (!$latestEntry) {
+                $latestEntry = [
+                    'date' => $row['created_date'],
+                    'type' => 'General',
+                    'details' => 'No entries available'
+                ];
+            }
+            
+            // Create a summary of all entry types
+            $entryTypes = array_unique(array_column($recordEntries, 'type'));
+            $typesSummary = implode(', ', $entryTypes);
             
             $formattedRecord = [
                 'id' => $recordId,
                 'patient' => [
-                    'name' => $record['patient_name'] ?? 'Unknown Patient'
+                    'name' => $row['patient_name'] ?? 'Unknown Patient'
                 ],
-                'doctor' => $record['doctor_name'] ?? 'Unknown Doctor',
-                'date' => $record['record_date'],
-                'dateOfAdmission' => $record['date_of_admission'],
-                'type' => $record['record_type'],
-                'details' => $record['details'],
+                'doctor' => $row['doctor_name'] ?? 'Unknown Doctor',
+                'date' => $row['last_updated'],
+                'dateOfAdmission' => $row['date_of_admission'],
+                'type' => $typesSummary ?: $latestEntry['type'],
+                'details' => $latestEntry['details'],
+                'entryCount' => count($recordEntries),
                 'bill' => [
-                    'invoiceId' => $record['invoice_id'] ?? 'N/A',
-                    'status' => $record['bill_status'] ?? 'No Bill',
+                    'invoiceId' => $row['invoice_id'] ?? 'N/A',
+                    'status' => $row['bill_status'] ?? 'No Bill',
                     'items' => []
                 ]
             ];
@@ -116,15 +150,24 @@ function getMedicalRecords($conn) {
 
 function getMedicalRecordDetails($conn, $recordId) {
     try {
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+            return;
+        }
+        
         // Extract numeric ID from formatted ID (e.g., REC001 -> 1)
         $numericId = (int)substr($recordId, 3);
         
         $query = "
             SELECT 
                 mr.record_id,
-                mr.record_date,
-                mr.record_type,
-                mr.details,
+                mr.created_date,
+                mr.last_updated,
+                mr.record_entries,
                 p.patient_id,
                 p.name as patient_name,
                 p.date_of_admission,
@@ -133,13 +176,13 @@ function getMedicalRecordDetails($conn, $recordId) {
                 b.total_amount,
                 b.status as bill_status,
                 b.bill_date,
-                CONCAT('INV-', YEAR(b.bill_date), '-', LPAD(b.bill_id, 3, '0')) as invoice_id
+                CONCAT('INV-', YEAR(COALESCE(b.bill_date, mr.created_date)), '-', LPAD(COALESCE(b.bill_id, mr.record_id), 3, '0')) as invoice_id
             FROM medical_records mr
             LEFT JOIN patients p ON mr.patient_id = p.patient_id
             LEFT JOIN doctors d ON mr.doctor_id = d.doctor_id
             LEFT JOIN bills b ON p.patient_id = b.patient_id 
-                AND DATE(b.bill_date) = DATE(mr.record_date)
-            WHERE mr.record_id = ?
+                AND DATE(b.bill_date) >= DATE(mr.created_date)
+            WHERE mr.record_id = ? AND mr.doctor_id = ?
         ";
         
         $stmt = $conn->prepare($query);
@@ -147,14 +190,17 @@ function getMedicalRecordDetails($conn, $recordId) {
             throw new Exception('Prepare failed: ' . $conn->error);
         }
         
-        $stmt->bind_param('i', $numericId);
+        $stmt->bind_param('ii', $numericId, $doctor_id);
         $stmt->execute();
         $result = $stmt->get_result();
         $record = $result->fetch_assoc();
         
         if (!$record) {
-            throw new Exception('Medical record not found');
+            throw new Exception('Medical record not found or access denied');
         }
+        
+        // Parse the JSON record entries
+        $recordEntries = json_decode($record['record_entries'], true) ?: [];
         
         // Get bill items if bill exists
         $billItems = [];
@@ -177,16 +223,32 @@ function getMedicalRecordDetails($conn, $recordId) {
             }
         }
         
+        // Create consolidated details from all entries
+        $consolidatedDetails = '';
+        foreach ($recordEntries as $entry) {
+            $entryDate = $entry['date'];
+            $entryType = $entry['type'];
+            $entryDetails = $entry['details'];
+            $consolidatedDetails .= "[$entryDate] $entryType: $entryDetails\n\n";
+        }
+        
+        // Get the latest entry for type display
+        $latestEntry = end($recordEntries);
+        $entryTypes = array_unique(array_column($recordEntries, 'type'));
+        $typesSummary = implode(', ', $entryTypes);
+        
         $formattedRecord = [
             'id' => 'REC' . str_pad($record['record_id'], 3, '0', STR_PAD_LEFT),
             'patient' => [
                 'name' => $record['patient_name'] ?? 'Unknown Patient'
             ],
             'doctor' => $record['doctor_name'] ?? 'Unknown Doctor',
-            'date' => $record['record_date'],
+            'date' => $record['last_updated'],
             'dateOfAdmission' => $record['date_of_admission'],
-            'type' => $record['record_type'],
-            'details' => $record['details'],
+            'type' => $typesSummary ?: ($latestEntry['type'] ?? 'General'),
+            'details' => trim($consolidatedDetails) ?: 'No entries available',
+            'entries' => $recordEntries,
+            'entryCount' => count($recordEntries),
             'bill' => [
                 'invoiceId' => $record['invoice_id'] ?? 'N/A',
                 'status' => $record['bill_status'] ?? 'No Bill',
@@ -205,9 +267,17 @@ function createMedicalRecord($conn, $data) {
     try {
         $conn->autocommit(false);
         
+        // Create initial entry
+        $initialEntry = [
+            'date' => $data['record_date'],
+            'type' => $data['record_type'],
+            'details' => $data['details'],
+            'timestamp' => time()
+        ];
+        
         $query = "
-            INSERT INTO medical_records (patient_id, doctor_id, record_date, record_type, details)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO medical_records (patient_id, doctor_id, created_date, record_entries)
+            VALUES (?, ?, ?, ?)
         ";
         
         $stmt = $conn->prepare($query);
@@ -215,12 +285,12 @@ function createMedicalRecord($conn, $data) {
             throw new Exception('Prepare failed: ' . $conn->error);
         }
         
-        $stmt->bind_param('iisss', 
+        $entriesJson = json_encode([$initialEntry]);
+        $stmt->bind_param('iiss', 
             $data['patient_id'],
             $data['doctor_id'],
             $data['record_date'],
-            $data['record_type'],
-            $data['details']
+            $entriesJson
         );
         
         if (!$stmt->execute()) {
@@ -241,6 +311,82 @@ function createMedicalRecord($conn, $data) {
         $conn->rollback();
         $conn->autocommit(true);
         throw new Exception('Error creating medical record: ' . $e->getMessage());
+    }
+}
+
+function addMedicalEntry($conn, $data) {
+    try {
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+            return;
+        }
+        
+        $conn->autocommit(false);
+        
+        // Check if a record exists for this patient-doctor combination
+        $checkQuery = "SELECT record_id, record_entries FROM medical_records WHERE patient_id = ? AND doctor_id = ?";
+        $checkStmt = $conn->prepare($checkQuery);
+        $checkStmt->bind_param('ii', $data['patient_id'], $doctor_id);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $existingRecord = $result->fetch_assoc();
+        
+        $newEntry = [
+            'date' => $data['record_date'] ?? date('Y-m-d'),
+            'type' => $data['record_type'],
+            'details' => $data['details'],
+            'timestamp' => time()
+        ];
+        
+        if ($existingRecord) {
+            // Update existing record
+            $currentEntries = json_decode($existingRecord['record_entries'], true) ?: [];
+            $currentEntries[] = $newEntry;
+            
+            $updateQuery = "UPDATE medical_records SET record_entries = ?, last_updated = NOW() WHERE record_id = ?";
+            $updateStmt = $conn->prepare($updateQuery);
+            $entriesJson = json_encode($currentEntries);
+            $updateStmt->bind_param('si', $entriesJson, $existingRecord['record_id']);
+            
+            if (!$updateStmt->execute()) {
+                throw new Exception('Failed to update medical record: ' . $updateStmt->error);
+            }
+            
+            $recordId = $existingRecord['record_id'];
+            $message = 'Medical entry added successfully';
+        } else {
+            // Create new record
+            $insertQuery = "INSERT INTO medical_records (patient_id, doctor_id, created_date, record_entries) VALUES (?, ?, ?, ?)";
+            $insertStmt = $conn->prepare($insertQuery);
+            $entriesJson = json_encode([$newEntry]);
+            $createDate = $data['record_date'] ?? date('Y-m-d');
+            $insertStmt->bind_param('iiss', $data['patient_id'], $doctor_id, $createDate, $entriesJson);
+            
+            if (!$insertStmt->execute()) {
+                throw new Exception('Failed to create medical record: ' . $insertStmt->error);
+            }
+            
+            $recordId = $conn->insert_id;
+            $message = 'Medical record created successfully';
+        }
+        
+        $conn->commit();
+        $conn->autocommit(true);
+        
+        echo json_encode([
+            'success' => true, 
+            'message' => $message,
+            'record_id' => $recordId
+        ]);
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        $conn->autocommit(true);
+        throw new Exception('Error adding medical entry: ' . $e->getMessage());
     }
 }
 ?>

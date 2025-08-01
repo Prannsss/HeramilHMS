@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { BedDouble, LogOut } from 'lucide-react';
+import { BedDouble, LogOut, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 type RoomStatus = 'Vacant' | 'Occupied';
 
@@ -31,6 +32,8 @@ interface Patient {
 
 interface Room {
   id: number;
+  room_number: string;
+  floor: number;
   status: RoomStatus;
   occupant?: Patient;
 }
@@ -40,84 +43,27 @@ interface Floor {
   rooms: Room[];
 }
 
-const initialPatients: Patient[] = [
-  {
-    id: "PAT001",
-    name: "Amelia Johnson",
-    dateOfAdmission: "2023-06-12",
-    reasonForAdmission: "Routine Check-up",
-  },
-  {
-    id: "PAT002",
-    name: "Benjamin Carter",
-    dateOfAdmission: "2023-06-08",
-    reasonForAdmission: "Fractured Arm",
-  },
-  {
-    id: "PAT004",
-    name: "Daniel Evans",
-    dateOfAdmission: "2023-06-18",
-    reasonForAdmission: "Allergic Reaction",
-  },
-  {
-    id: "PAT005",
-    name: "Evelyn Foster",
-    dateOfAdmission: "2023-05-28",
-    reasonForAdmission: "Migraine Treatment",
-  },
-  {
-    id: "PAT006",
-    name: "Liam Johnson",
-    dateOfAdmission: "2023-07-01",
-    reasonForAdmission: "Follow-up",
-  },
-  {
-    id: "PAT007",
-    name: "Emma Brown",
-    dateOfAdmission: "2023-07-02",
-    reasonForAdmission: "Annual Check-up",
-  },
-  {
-    id: "PAT008",
-    name: "Noah Williams",
-    dateOfAdmission: "2023-07-03",
-    reasonForAdmission: "Consultation",
-  },
-];
-
-const generateInitialState = (): Floor[] => {
-  const floors = [];
-  let patientIndex = 0;
-  for (let i = 1; i <= 3; i++) {
-    const rooms: Room[] = [];
-    for (let j = 1; j <= 20; j++) {
-      const isOccupied = Math.random() > 0.6;
-      let occupant: Patient | undefined = undefined;
-      if (isOccupied && patientIndex < initialPatients.length) {
-        occupant = initialPatients[patientIndex % initialPatients.length];
-        patientIndex++;
-      }
-      rooms.push({
-        id: (i - 1) * 20 + j,
-        status: isOccupied && occupant ? 'Occupied' : 'Vacant',
-        occupant: occupant,
-      });
-    }
-    floors.push({ floor: i, rooms });
-  }
-  return floors;
-};
+interface RoomsData {
+  floors: Floor[];
+  statistics: {
+    totalRooms: number;
+    occupiedRooms: number;
+    vacantRooms: number;
+  };
+}
 
 function OccupantDetailsModal({
   room,
   isOpen,
   onOpenChange,
   onVacate,
+  isVacating,
 }: {
   room: Room | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onVacate: (roomId: number) => void;
+  isVacating: boolean;
 }) {
   if (!isOpen || !room || !room.occupant) return null;
 
@@ -125,7 +71,7 @@ function OccupantDetailsModal({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Occupant Details - Room {room.id}</DialogTitle>
+          <DialogTitle>Occupant Details - Room {room.room_number}</DialogTitle>
           <DialogDescription>
             Information for the patient occupying this room.
           </DialogDescription>
@@ -152,12 +98,16 @@ function OccupantDetailsModal({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-          <Button variant="destructive" onClick={() => {
-            onVacate(room.id);
-            onOpenChange(false);
-          }}>
+          <Button 
+            variant="destructive" 
+            onClick={() => {
+              onVacate(room.id);
+              onOpenChange(false);
+            }}
+            disabled={isVacating}
+          >
             <LogOut className="mr-2 h-4 w-4" />
-            Vacate Room
+            {isVacating ? 'Vacating...' : 'Vacate Room'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -165,11 +115,57 @@ function OccupantDetailsModal({
   );
 }
 
-
 export default function RoomsPage() {
-  const [floors, setFloors] = useState<Floor[]>(generateInitialState);
+  const [roomsData, setRoomsData] = useState<RoomsData | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isVacating, setIsVacating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { toast } = useToast();
+
+  const fetchRoomsData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // First, sync the rooms data with patient data to ensure consistency
+      try {
+        await fetch('http://localhost/HeramilHMS/public/backend/api/patients.php', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            patient_id: 0, // Not used for sync action
+            action: 'sync_rooms'
+          }),
+        });
+      } catch (syncError) {
+        console.warn('Room sync failed, continuing with room data fetch:', syncError);
+      }
+      
+      // Then fetch the updated room data
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/rooms.php');
+      if (!response.ok) {
+        throw new Error('Failed to fetch rooms data');
+      }
+      const data = await response.json();
+      setRoomsData(data);
+    } catch (error) {
+      console.error('Error fetching rooms data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch rooms data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoomsData();
+  }, []);
 
   const handleRoomClick = (room: Room) => {
     if (room.status === 'Occupied') {
@@ -178,33 +174,94 @@ export default function RoomsPage() {
     } else {
       // Logic to make a vacant room occupied could be added here
       // For now, we'll just log it.
-      console.log(`Room ${room.id} is vacant. An occupied room must be selected to see details.`);
+      console.log(`Room ${room.room_number} is vacant. An occupied room must be selected to see details.`);
     }
   };
 
-  const handleVacateRoom = (roomId: number) => {
-    setFloors(prevFloors => 
-        prevFloors.map(floor => ({
-            ...floor,
-            rooms: floor.rooms.map(room => 
-                room.id === roomId ? { ...room, status: 'Vacant', occupant: undefined } : room
-            )
-        }))
-    );
+  const handleVacateRoom = async (roomId: number) => {
+    try {
+      setIsVacating(true);
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/rooms.php', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          room_id: roomId,
+          action: 'vacate'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: result.message || "Room vacated successfully",
+        });
+        // Refresh the rooms data
+        await fetchRoomsData();
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to vacate room",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error vacating room:', error);
+      toast({
+        title: "Error",
+        description: "Failed to vacate room. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVacating(false);
+    }
   };
 
-  const getOccupancyStats = () => {
-    let totalRooms = 0;
-    let occupiedRooms = 0;
-    floors.forEach(floor => {
-        totalRooms += floor.rooms.length;
-        occupiedRooms += floor.rooms.filter(r => r.status === 'Occupied').length;
-    });
-    return { totalRooms, occupiedRooms };
+  const handleRefreshRooms = async () => {
+    try {
+      setIsRefreshing(true);
+      await fetchRoomsData();
+      toast({
+        title: "Success",
+        description: "Room data refreshed and synchronized successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh room data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout role="admin">
+        <PageHeader title="Room Occupancy" description="View and manage the status of all hospital rooms." />
+        <div className="flex items-center justify-center h-64">
+          <p>Loading rooms data...</p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
-  const { totalRooms, occupiedRooms } = getOccupancyStats();
-  const vacantRooms = totalRooms - occupiedRooms;
+  if (!roomsData) {
+    return (
+      <DashboardLayout role="admin">
+        <PageHeader title="Room Occupancy" description="View and manage the status of all hospital rooms." />
+        <div className="flex items-center justify-center h-64">
+          <p>Failed to load rooms data. Please refresh the page.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const { totalRooms, occupiedRooms, vacantRooms } = roomsData.statistics;
 
   return (
     <DashboardLayout role="admin">
@@ -243,13 +300,13 @@ export default function RoomsPage() {
         <CardContent className="pt-6">
             <Tabs defaultValue="floor-1">
                 <TabsList>
-                    {floors.map((floor) => (
+                    {roomsData.floors.map((floor) => (
                         <TabsTrigger key={floor.floor} value={`floor-${floor.floor}`}>
                             Floor {floor.floor}
                         </TabsTrigger>
                     ))}
                 </TabsList>
-                 {floors.map((floor, floorIndex) => (
+                 {roomsData.floors.map((floor, floorIndex) => (
                     <TabsContent key={floor.floor} value={`floor-${floor.floor}`}>
                         <div className="grid grid-cols-5 gap-4 pt-4">
                             {floor.rooms.map((room, roomIndex) => (
@@ -264,7 +321,7 @@ export default function RoomsPage() {
                                 )}
                             >
                                 <div className="text-lg font-bold text-center">
-                                {floor.floor}{String(roomIndex + 1).padStart(2, '0')}
+                                {room.room_number}
                                 </div>
                                 <Badge
                                 className={cn(
@@ -289,6 +346,7 @@ export default function RoomsPage() {
         isOpen={isModalOpen}
         onOpenChange={setIsModalOpen}
         onVacate={handleVacateRoom}
+        isVacating={isVacating}
       />
     </DashboardLayout>
   );

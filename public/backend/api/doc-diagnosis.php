@@ -10,14 +10,114 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once '../db_connect.php';
+require_once 'auth_helpers.php';
+
+// Include the addMedicalEntry function
+function addMedicalEntry($conn, $data) {
+    try {
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            // Use the provided doctor_id if auth fails but data contains it
+            if (isset($data['doctor_id'])) {
+                $doctor_id = $data['doctor_id'];
+            } else {
+                throw new Exception('Unauthorized: Invalid or missing doctor authentication');
+            }
+        }
+        
+        $conn->autocommit(false);
+        
+        // Check if a record exists for this patient-doctor combination
+        $checkQuery = "SELECT record_id, record_entries FROM medical_records WHERE patient_id = ? AND doctor_id = ?";
+        $checkStmt = $conn->prepare($checkQuery);
+        $checkStmt->bind_param('ii', $data['patient_id'], $doctor_id);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $existingRecord = $result->fetch_assoc();
+        
+        $newEntry = [
+            'date' => $data['record_date'] ?? date('Y-m-d'),
+            'type' => $data['record_type'],
+            'details' => $data['details'],
+            'timestamp' => time()
+        ];
+        
+        if ($existingRecord) {
+            // Update existing record
+            $currentEntries = json_decode($existingRecord['record_entries'], true) ?: [];
+            $currentEntries[] = $newEntry;
+            
+            $updateQuery = "UPDATE medical_records SET record_entries = ?, last_updated = NOW() WHERE record_id = ?";
+            $updateStmt = $conn->prepare($updateQuery);
+            $entriesJson = json_encode($currentEntries);
+            $updateStmt->bind_param('si', $entriesJson, $existingRecord['record_id']);
+            
+            if (!$updateStmt->execute()) {
+                throw new Exception('Failed to update medical record: ' . $updateStmt->error);
+            }
+            
+            $recordId = $existingRecord['record_id'];
+        } else {
+            // Create new record
+            $insertQuery = "INSERT INTO medical_records (patient_id, doctor_id, created_date, record_entries) VALUES (?, ?, ?, ?)";
+            $insertStmt = $conn->prepare($insertQuery);
+            $entriesJson = json_encode([$newEntry]);
+            $createDate = $data['record_date'] ?? date('Y-m-d');
+            $insertStmt->bind_param('iiss', $data['patient_id'], $doctor_id, $createDate, $entriesJson);
+            
+            if (!$insertStmt->execute()) {
+                throw new Exception('Failed to create medical record: ' . $insertStmt->error);
+            }
+            
+            $recordId = $conn->insert_id;
+        }
+        
+        $conn->commit();
+        $conn->autocommit(true);
+        
+        return $recordId;
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        $conn->autocommit(true);
+        throw new Exception('Error adding medical entry: ' . $e->getMessage());
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['action'])) {
         if ($_GET['action'] === 'patients') {
-            // Get active patients for diagnosis
+            // Get active patients for diagnosis - only patients with appointments for this doctor
             try {
+                // Get doctor ID from authentication or request parameter
+                $doctor_id = getDoctorIdFromAuth();
+                
+                if (!$doctor_id) {
+                    // Fallback to GET parameter if auth helper doesn't work
+                    if (isset($_GET['doctor_id'])) {
+                        $doctor_id = intval($_GET['doctor_id']);
+                    } else {
+                        echo json_encode([
+                            'status' => 'error',
+                            'message' => 'Doctor ID required for patient access'
+                        ]);
+                        exit;
+                    }
+                }
+                
+                // Validate doctor exists
+                if (!validateDoctor($conn, $doctor_id)) {
+                    echo json_encode([
+                        'status' => 'error',
+                        'message' => 'Invalid doctor authentication'
+                    ]);
+                    exit;
+                }
+                
                 $query = "
-                    SELECT 
+                    SELECT DISTINCT
                         p.patient_id,
                         p.name,
                         p.age,
@@ -33,13 +133,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         p.date_of_discharge,
                         MAX(a.appointment_datetime) as last_visit
                     FROM patients p
-                    LEFT JOIN appointments a ON p.patient_id = a.patient_id
-                    WHERE p.status = 'Active'
+                    INNER JOIN appointments a ON p.patient_id = a.patient_id
+                    WHERE p.status = 'Active' 
+                    AND a.doctor_id = ?
+                    AND (a.status = 'Scheduled' OR a.status = 'Completed')
                     GROUP BY p.patient_id
                     ORDER BY p.date_of_admission DESC
                 ";
                 
-                $result = $conn->query($query);
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param("i", $doctor_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
                 $patients = [];
                 
                 while ($row = $result->fetch_assoc()) {
@@ -149,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Save diagnosis (medical record)
+    // Save diagnosis (medical record) using consolidated approach
     try {
         $input = json_decode(file_get_contents('php://input'), true);
         
@@ -167,35 +272,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $record_type = isset($input['record_type']) ? $input['record_type'] : 'Diagnosis';
         $record_date = date('Y-m-d');
         
-        $query = "
-            INSERT INTO medical_records (patient_id, doctor_id, record_date, record_type, details)
-            VALUES (?, ?, ?, ?, ?)
-        ";
+        // Use the consolidated medical records approach
+        $recordId = addMedicalEntry($conn, [
+            'patient_id' => $patient_id,
+            'doctor_id' => $doctor_id,
+            'record_date' => $record_date,
+            'record_type' => $record_type,
+            'details' => $diagnosis
+        ]);
         
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("iisss", $patient_id, $doctor_id, $record_date, $record_type, $diagnosis);
-        
-        if ($stmt->execute()) {
-            $record_id = $conn->insert_id;
-            
-            echo json_encode([
-                'status' => 'success',
-                'message' => 'Diagnosis saved successfully',
-                'data' => [
-                    'record_id' => $record_id,
-                    'patient_id' => $patient_id,
-                    'doctor_id' => $doctor_id,
-                    'record_date' => $record_date,
-                    'record_type' => $record_type,
-                    'details' => $diagnosis
-                ]
-            ]);
-        } else {
-            echo json_encode([
-                'status' => 'error',
-                'message' => 'Failed to save diagnosis: ' . $stmt->error
-            ]);
-        }
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Diagnosis saved successfully',
+            'data' => [
+                'record_id' => $recordId,
+                'patient_id' => $patient_id,
+                'doctor_id' => $doctor_id,
+                'record_date' => $record_date,
+                'record_type' => $record_type,
+                'details' => $diagnosis
+            ]
+        ]);
         
     } catch (Exception $e) {
         echo json_encode([

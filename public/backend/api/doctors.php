@@ -218,17 +218,56 @@ function handleDelete($conn) {
             return;
         }
         
-        // Delete the doctor
-        $stmt = $conn->prepare("DELETE FROM doctors WHERE doctor_id = ?");
-        $stmt->bind_param("i", $doctor_id);
+        // Start transaction to ensure both doctor and user are deleted together
+        $conn->begin_transaction();
         
-        if ($stmt->execute()) {
+        try {
+            // Get the user_id associated with this doctor
+            $user_stmt = $conn->prepare("SELECT user_id FROM doctors WHERE doctor_id = ?");
+            $user_stmt->bind_param("i", $doctor_id);
+            $user_stmt->execute();
+            $user_result = $user_stmt->get_result();
+            
+            $user_id = null;
+            if ($user_result->num_rows > 0) {
+                $user_data = $user_result->fetch_assoc();
+                $user_id = $user_data['user_id'];
+            }
+            
+            // Delete the doctor
+            $stmt = $conn->prepare("DELETE FROM doctors WHERE doctor_id = ?");
+            $stmt->bind_param("i", $doctor_id);
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Failed to delete doctor: " . $stmt->error);
+            }
+            
+            // Delete the associated user account if it exists
+            if ($user_id) {
+                $user_delete_stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+                $user_delete_stmt->bind_param("i", $user_id);
+                
+                if (!$user_delete_stmt->execute()) {
+                    throw new Exception("Failed to delete user account: " . $user_delete_stmt->error);
+                }
+                $user_delete_stmt->close();
+            }
+            
+            // Commit the transaction
+            $conn->commit();
+            
             echo json_encode([
                 'success' => true,
-                'message' => 'Staff member deleted successfully'
+                'message' => 'Staff member and associated user account deleted successfully'
             ]);
-        } else {
-            throw new Exception("Failed to delete doctor: " . $stmt->error);
+            
+            $stmt->close();
+            $user_stmt->close();
+            
+        } catch (Exception $e) {
+            // Rollback the transaction on error
+            $conn->rollback();
+            throw $e;
         }
         
     } catch (Exception $e) {

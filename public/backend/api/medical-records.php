@@ -28,15 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             LEFT JOIN patients p ON mr.patient_id = p.patient_id
             LEFT JOIN doctors d ON mr.doctor_id = d.doctor_id
             LEFT JOIN bills b ON p.patient_id = b.patient_id
-            ORDER BY mr.record_date DESC, mr.record_id DESC
+            ORDER BY p.patient_id, mr.record_date DESC, mr.record_id DESC
         ";
         
         $records_result = $conn->query($records_query);
-        $records = [];
+        $patientRecords = []; // Group by patient_id
         
         while ($row = $records_result->fetch_assoc()) {
-            // Generate a record ID in the format REC###
-            $recordId = 'REC' . str_pad($row['record_id'], 3, '0', STR_PAD_LEFT);
+            $patientId = $row['patient_id'];
             
             // Get bill items for this patient's bill
             $billItems = [];
@@ -65,44 +64,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
             }
             
-            // Check if record already exists in our array (due to multiple bills per patient)
-            $existingRecordIndex = -1;
-            foreach ($records as $index => $existingRecord) {
+            // If this is the first record for this patient, create the patient entry
+            if (!isset($patientRecords[$patientId])) {
+                $patientRecords[$patientId] = [
+                    'id' => 'PAT' . str_pad($patientId, 3, '0', STR_PAD_LEFT),
+                    'patient_id' => $patientId,
+                    'patient' => [
+                        'name' => $row['patient_name'] ?: 'Unknown Patient'
+                    ],
+                    'dateOfAdmission' => $row['date_of_admission'] ?: 'N/A',
+                    'records' => [],
+                    'bills' => [],
+                    'recordCount' => 0,
+                    'latestDate' => $row['record_date'],
+                    'doctors' => []
+                ];
+            }
+            
+            // Add this record to the patient's records
+            $recordId = 'REC' . str_pad($row['record_id'], 3, '0', STR_PAD_LEFT);
+            
+            // Check if this specific record already exists to avoid duplicates
+            $recordExists = false;
+            foreach ($patientRecords[$patientId]['records'] as $existingRecord) {
                 if ($existingRecord['id'] === $recordId) {
-                    $existingRecordIndex = $index;
+                    $recordExists = true;
                     break;
                 }
             }
             
-            if ($existingRecordIndex === -1) {
-                // New record
-                $records[] = [
+            if (!$recordExists) {
+                $patientRecords[$patientId]['records'][] = [
                     'id' => $recordId,
-                    'patient' => [
-                        'name' => $row['patient_name'] ?: 'Unknown Patient'
-                    ],
-                    'doctor' => $row['doctor_name'] ?: 'Not assigned',
                     'date' => $row['record_date'],
-                    'dateOfAdmission' => $row['date_of_admission'] ?: 'N/A',
                     'type' => $row['record_type'] ?: 'General',
                     'details' => $row['details'] ?: 'No details available',
-                    'file_path' => $row['file_path'],
-                    'bill' => [
+                    'doctor' => $row['doctor_name'] ?: 'Not assigned',
+                    'file_path' => $row['file_path']
+                ];
+                
+                $patientRecords[$patientId]['recordCount']++;
+            }
+            
+            // Track unique doctors for this patient
+            if ($row['doctor_name'] && !in_array($row['doctor_name'], $patientRecords[$patientId]['doctors'])) {
+                $patientRecords[$patientId]['doctors'][] = $row['doctor_name'];
+            }
+            
+            // Add bill information if exists and not already added
+            if ($row['bill_id'] && !empty($billItems)) {
+                $billExists = false;
+                foreach ($patientRecords[$patientId]['bills'] as $existingBill) {
+                    if ($existingBill['invoiceId'] === $invoiceId) {
+                        $billExists = true;
+                        break;
+                    }
+                }
+                
+                if (!$billExists) {
+                    $patientRecords[$patientId]['bills'][] = [
                         'invoiceId' => $invoiceId,
                         'status' => $billStatus,
                         'items' => $billItems
-                    ],
-                    'record_id' => $row['record_id'] // Keep original ID for backend operations
-                ];
-            } else {
-                // Update existing record with additional bill items if different bill
-                if (!empty($billItems) && $row['bill_id']) {
-                    $records[$existingRecordIndex]['bill']['items'] = array_merge(
-                        $records[$existingRecordIndex]['bill']['items'],
-                        $billItems
-                    );
+                    ];
                 }
             }
+        }
+        
+        // Convert to final format for frontend
+        $records = [];
+        foreach ($patientRecords as $patientData) {
+            // Create a summary of record types
+            $recordTypes = [];
+            foreach ($patientData['records'] as $record) {
+                if (!in_array($record['type'], $recordTypes)) {
+                    $recordTypes[] = $record['type'];
+                }
+            }
+            
+            // Get the most recent record details for display
+            $latestRecord = $patientData['records'][0] ?? null;
+            
+            $records[] = [
+                'id' => $patientData['id'],
+                'patient' => $patientData['patient'],
+                'doctor' => implode(', ', $patientData['doctors']),
+                'date' => $patientData['latestDate'],
+                'dateOfAdmission' => $patientData['dateOfAdmission'],
+                'type' => implode(', ', $recordTypes),
+                'details' => "Combined records: " . $patientData['recordCount'] . " entries",
+                'file_path' => null,
+                'recordCount' => $patientData['recordCount'],
+                'records' => $patientData['records'], // All individual records
+                'bill' => [
+                    'invoiceId' => count($patientData['bills']) > 0 ? $patientData['bills'][0]['invoiceId'] : 'N/A',
+                    'status' => count($patientData['bills']) > 0 ? $patientData['bills'][0]['status'] : 'No Bill',
+                    'items' => count($patientData['bills']) > 0 ? $patientData['bills'][0]['items'] : []
+                ],
+                'bills' => $patientData['bills'], // All bills for this patient
+                'record_id' => $patientData['patient_id'] // Use patient_id as identifier
+            ];
         }
         
         echo json_encode([

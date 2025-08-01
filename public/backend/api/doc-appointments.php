@@ -10,8 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Include database connection
+// Include database connection and auth helpers
 require_once '../db_connect.php';
+require_once 'auth_helpers.php';
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
@@ -38,8 +39,14 @@ try {
 
 function handleGet($conn) {
     try {
-        // Get doctor ID from query parameter (default to 1 for Dr. Jayson Ado)
-        $doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : 1;
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+            return;
+        }
         
         // Fetch all appointments for the doctor
         $appointments_query = "

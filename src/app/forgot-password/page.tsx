@@ -57,6 +57,7 @@ export default function ForgotPasswordPage() {
     toast({
       title: 'Request Sent',
       description: 'If an account exists, a reset link will be sent to your email.',
+      duration: 3000,
     });
   }
 

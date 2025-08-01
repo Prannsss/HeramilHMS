@@ -51,6 +51,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useUserStore } from "@/hooks/use-user-store";
 
 // Types for API response
 interface Patient {
@@ -149,7 +150,6 @@ function PatientTable({ patients, onPatientSelect, onPrescribeSelect, onAdmitSel
           <TableHead>Patient</TableHead>
           <TableHead>Patient ID</TableHead>
           <TableHead>Reason</TableHead>
-          <TableHead>Last Visit</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -172,9 +172,16 @@ function PatientTable({ patients, onPatientSelect, onPrescribeSelect, onAdmitSel
             <TableCell className="max-w-xs truncate">
               {patient.status === 'Admitted' ? patient.reasonForAdmission : (patient.reasonForAppointment || patient.reasonForAdmission)}
             </TableCell>
-            <TableCell>{patient.lastVisit}</TableCell>
             <TableCell>
-              <Badge variant={patient.status === 'Active' ? 'secondary' : 'outline'}>
+              <Badge variant={
+                patient.status === 'Active' ? 'default' : 
+                patient.status === 'Admitted' ? 'default' : 
+                'destructive'
+              } className={
+                patient.status === 'Active' ? 'bg-green-600 hover:bg-green-700' : 
+                patient.status === 'Admitted' ? 'bg-blue-600 hover:bg-blue-700' : 
+                'bg-red-600 hover:bg-red-700'
+              }>
                   {patient.status}
               </Badge>
             </TableCell>
@@ -228,7 +235,7 @@ function PatientTable({ patients, onPatientSelect, onPrescribeSelect, onAdmitSel
   );
 }
 
-function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void }) {
+function PatientInfoModal({ patient, isOpen, onOpenChange, user }: { patient: Patient | null, isOpen: boolean, onOpenChange: (isOpen: boolean) => void, user: any }) {
   const [patientDetails, setPatientDetails] = useState<PatientDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const { toast } = useToast();
@@ -243,7 +250,17 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
 
   const fetchPatientDetails = async (patientId: number) => {
     try {
-      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patient_details&patient_id=${patientId}`);
+      if (!user?.doctor_id) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'Doctor ID not found. Please log in again.',
+          duration: 3000,
+        });
+        return;
+      }
+      
+      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patient_details&patient_id=${patientId}&doctor_id=${user.doctor_id}`);
       const data = await response.json();
       
       if (data.status === 'success') {
@@ -253,6 +270,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
           variant: 'destructive',
           title: 'Error',
           description: 'Failed to load patient details: ' + data.message,
+          duration: 3000,
         });
       }
     } catch (error) {
@@ -261,6 +279,7 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to load patient details.',
+        duration: 3000,
       });
     } finally {
       setIsLoadingDetails(false);
@@ -444,12 +463,13 @@ function PatientInfoModal({ patient, isOpen, onOpenChange }: { patient: Patient 
   );
 }
 
-function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave }: { 
+function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave, user }: { 
   patient: Patient | null, 
   inventory: InventoryItem[], 
   isOpen: boolean, 
   onOpenChange: (isOpen: boolean) => void, 
-  onSave: (patientId: string, prescription: string, usedItems: UsedItem[]) => void 
+  onSave: (patientId: string, prescription: string, usedItems: UsedItem[]) => void,
+  user: any 
 }) {
     const [prescription, setPrescription] = useState('');
     const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
@@ -467,7 +487,17 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave }:
 
     const fetchPatientDetails = async (patientId: number) => {
       try {
-        const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patient_details&patient_id=${patientId}`);
+        if (!user?.doctor_id) {
+          toast({
+            variant: 'destructive',
+            title: 'Authentication Error',
+            description: 'Doctor ID not found. Please log in again.',
+            duration: 3000,
+          });
+          return;
+        }
+        
+        const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patient_details&patient_id=${patientId}&doctor_id=${user.doctor_id}`);
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -477,6 +507,7 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave }:
             variant: 'destructive',
             title: 'Error',
             description: 'Failed to load patient details: ' + data.message,
+            duration: 3000,
           });
         }
       } catch (error) {
@@ -485,6 +516,7 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave }:
           variant: 'destructive',
           title: 'Error',
           description: 'Failed to load patient details.',
+          duration: 3000,
         });
       } finally {
         setIsLoadingDetails(false);
@@ -720,6 +752,7 @@ function AdmitPatientModal({ patient, isOpen, onOpenChange, onSave }: {
                 variant: 'destructive',
                 title: 'Error',
                 description: 'Date of birth and reason for admission are required.',
+                duration: 3000,
             });
             return;
         }
@@ -855,12 +888,19 @@ export default function DoctorPatientsPage() {
   const [isPrescribeModalOpen, setIsPrescribeModalOpen] = useState(false);
   const [isAdmitModalOpen, setIsAdmitModalOpen] = useState(false);
   const { toast } = useToast();
+  const { user, hasHydrated } = useUserStore();
 
   // Fetch patients from API
   useEffect(() => {
     async function fetchPatients() {
+      if (!user?.doctor_id) {
+        console.error('Doctor ID not available');
+        setIsLoadingPatients(false);
+        return;
+      }
+
       try {
-        const response = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patients&doctor_id=1');
+        const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patients&doctor_id=${user.doctor_id}`);
         const data = await response.json();
         
         if (data.status === 'success') {
@@ -870,6 +910,7 @@ export default function DoctorPatientsPage() {
             variant: 'destructive',
             title: 'Error',
             description: 'Failed to load patients: ' + data.message,
+            duration: 3000,
           });
         }
       } catch (error) {
@@ -878,14 +919,22 @@ export default function DoctorPatientsPage() {
           variant: 'destructive',
           title: 'Error',
           description: 'Failed to load patients. Please check your connection.',
+          duration: 3000,
         });
       } finally {
         setIsLoadingPatients(false);
       }
     }
 
-    fetchPatients();
-  }, [toast]);
+    if (!hasHydrated) return; // Wait for store to hydrate
+
+    // Add a small delay to ensure user store is hydrated
+    const timer = setTimeout(() => {
+      fetchPatients();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [toast, user?.doctor_id, hasHydrated]);
 
   // Fetch inventory from API
   useEffect(() => {
@@ -935,8 +984,19 @@ export default function DoctorPatientsPage() {
 
   const handleSaveAdmission = async (patientId: number, admissionData: any) => {
     try {
+      // Check if doctor ID is available
+      if (!user?.doctor_id) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'Doctor ID not found. Please log in again.',
+        });
+        return;
+      }
+
       const formData = new FormData();
       formData.append('patient_id', patientId.toString());
+      formData.append('doctor_id', user.doctor_id.toString());
       formData.append('date_of_birth', admissionData.date_of_birth);
       formData.append('blood_type', admissionData.blood_type);
       formData.append('allergies', admissionData.allergies);
@@ -973,7 +1033,7 @@ export default function DoctorPatientsPage() {
         });
         
         // Refresh patients list
-        const patientsResponse = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patients&doctor_id=1');
+        const patientsResponse = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patients&doctor_id=${user?.doctor_id}`);
         const patientsData = await patientsResponse.json();
         if (patientsData.status === 'success') {
           setPatients(patientsData.data);
@@ -997,8 +1057,19 @@ export default function DoctorPatientsPage() {
 
   const handleDischargePatient = async (patient: Patient) => {
     try {
+      // Check if doctor ID is available
+      if (!user?.doctor_id) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'Doctor ID not found. Please log in again.',
+        });
+        return;
+      }
+
       const formData = new FormData();
       formData.append('patient_id', patient.patient_id.toString());
+      formData.append('doctor_id', user.doctor_id.toString());
 
       const response = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-discharge.php', {
         method: 'POST',
@@ -1027,7 +1098,7 @@ export default function DoctorPatientsPage() {
         });
         
         // Refresh patients list
-        const patientsResponse = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patients&doctor_id=1');
+        const patientsResponse = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-patients.php?action=patients&doctor_id=${user?.doctor_id}`);
         const patientsData = await patientsResponse.json();
         if (patientsData.status === 'success') {
           setPatients(patientsData.data);
@@ -1061,6 +1132,16 @@ export default function DoctorPatientsPage() {
         return;
       }
 
+      // Check if doctor ID is available
+      if (!user?.doctor_id) {
+        toast({
+          variant: 'destructive',
+          title: 'Authentication Error',
+          description: 'Doctor ID not found. Please log in again.',
+        });
+        return;
+      }
+
       // Prepare used items for API
       const apiUsedItems = usedItems.map(item => ({
         item_id: inventory.find(inv => inv.id === item.itemId)?.item_id || 0,
@@ -1076,7 +1157,7 @@ export default function DoctorPatientsPage() {
         },
         body: JSON.stringify({
           patient_id: selectedPatient.patient_id,
-          doctor_id: 1, // TODO: Get from user session/context
+          doctor_id: user.doctor_id,
           prescription: prescription,
           used_items: apiUsedItems
         }),
@@ -1192,13 +1273,14 @@ export default function DoctorPatientsPage() {
           </CardFooter>
         </Card>
       )}
-      <PatientInfoModal patient={selectedPatient} isOpen={isInfoModalOpen} onOpenChange={setIsInfoModalOpen} />
+      <PatientInfoModal patient={selectedPatient} isOpen={isInfoModalOpen} onOpenChange={setIsInfoModalOpen} user={user} />
       <PrescriptionModal 
         patient={selectedPatient} 
         inventory={inventory}
         isOpen={isPrescribeModalOpen} 
         onOpenChange={setIsPrescribeModalOpen} 
         onSave={handleSavePrescription} 
+        user={user}
       />
       <AdmitPatientModal 
         patient={selectedPatient} 

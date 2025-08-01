@@ -117,7 +117,13 @@ function BillTable({
                 ₱{bill.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </TableCell>
             <TableCell>
-              <Badge variant={getStatusVariant(bill.status)} className={bill.status === 'Pending' ? 'bg-yellow-500 text-black' : ''}>
+              <Badge 
+                variant={getStatusVariant(bill.status)} 
+                className={
+                  bill.status === 'Pending' ? 'bg-yellow-500 text-black' : 
+                  bill.status === 'Paid' ? 'bg-green-500 text-white' : ''
+                }
+              >
                 {bill.status}
               </Badge>
             </TableCell>
@@ -140,12 +146,16 @@ function BillTable({
                     </DialogTrigger>
                     <InvoiceModal bill={bill} />
                   </Dialog>
-                  <DropdownMenuItem onClick={() => onStatusChange(bill.invoiceId, 'Paid')}>
-                      <Edit className="mr-2 h-4 w-4" /> Mark as Paid
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onStatusChange(bill.invoiceId, 'Unpaid')}>
-                      <Edit className="mr-2 h-4 w-4" /> Mark as Unpaid
-                  </DropdownMenuItem>
+                  {bill.status === 'Pending' && (
+                    <DropdownMenuItem onClick={() => onStatusChange(bill.invoiceId, 'Paid')}>
+                        <Edit className="mr-2 h-4 w-4" /> Mark as Paid
+                    </DropdownMenuItem>
+                  )}
+                  {bill.status === 'Paid' && (
+                    <DropdownMenuItem onClick={() => onStatusChange(bill.invoiceId, 'Pending')}>
+                        <Edit className="mr-2 h-4 w-4" /> Mark as Pending
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="text-red-500" onClick={() => onDelete(bill.invoiceId)}>
                       <Trash2 className="mr-2 h-4 w-4" /> Delete
                   </DropdownMenuItem>
@@ -208,7 +218,7 @@ export default function AdminBillingPage() {
   
   const handleStatusChange = async (invoiceId: string, newStatus: BillStatus) => {
     try {
-      const response = await fetch('http://localhost/HeramilHMS/src/backend/api/billing.php', {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/billing.php', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -236,7 +246,7 @@ export default function AdminBillingPage() {
 
   const handleDelete = async (invoiceId: string) => {
     try {
-      const response = await fetch('http://localhost/HeramilHMS/src/backend/api/billing.php', {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/billing.php', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +273,6 @@ export default function AdminBillingPage() {
   );
   
   const paidBills = filteredBills.filter((bill: Bill) => bill.status === 'Paid');
-  const unpaidBills = filteredBills.filter((bill: Bill) => bill.status === 'Unpaid');
   const pendingBills = filteredBills.filter((bill: Bill) => bill.status === 'Pending');
 
   if (loading) {
@@ -335,15 +344,11 @@ export default function AdminBillingPage() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Tabs defaultValue="unpaid">
+          <Tabs defaultValue="pending">
             <TabsList>
-              <TabsTrigger value="unpaid">Unpaid ({unpaidBills.length})</TabsTrigger>
               <TabsTrigger value="pending">Pending ({pendingBills.length})</TabsTrigger>
               <TabsTrigger value="paid">Paid ({paidBills.length})</TabsTrigger>
             </TabsList>
-            <TabsContent value="unpaid">
-              <BillTable bills={unpaidBills} onStatusChange={handleStatusChange} onDelete={handleDelete} />
-            </TabsContent>
             <TabsContent value="pending">
               <BillTable bills={pendingBills} onStatusChange={handleStatusChange} onDelete={handleDelete} />
             </TabsContent>

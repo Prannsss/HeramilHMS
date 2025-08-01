@@ -23,7 +23,8 @@ import { useUserStore } from "@/hooks/use-user-store"
 export function UserNav() {
   const pathname = usePathname();
   const isDoctor = pathname.startsWith('/doctor');
-  const { avatar } = useUserStore();
+  const isAdmin = pathname.startsWith('/admin');
+  const { avatar, user } = useUserStore();
   
   const profileLink = "/doctor/profile";
 
@@ -40,9 +41,11 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">User</p>
+            <p className="text-sm font-medium leading-none">
+              {user?.name || (user?.role === 'Admin' ? 'Administrator' : 'User')}
+            </p>
             <p className="text-xs leading-none text-muted-foreground">
-              user@example.com
+              {user?.email || 'user@example.com'}
             </p>
           </div>
         </DropdownMenuLabel>

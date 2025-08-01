@@ -19,6 +19,7 @@ ob_start();
 
 try {
     require_once '../db_connect.php';
+    require_once 'auth_helpers.php';
 } catch (Exception $e) {
     // Clear any output and send JSON error
     ob_clean();
@@ -30,8 +31,17 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle patient discharge
-    $doctor_id = 1; // TODO: Get from session/authentication
+    // Get doctor ID from authentication
+    $doctor_id = getDoctorIdFromAuth();
+    
+    if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+        ob_clean();
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Unauthorized: Invalid or missing doctor authentication'
+        ]);
+        exit;
+    }
     $patient_id = $_POST['patient_id'] ?? null;
     $discharge_date = date('Y-m-d'); // Use date format, not datetime
     
@@ -50,12 +60,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update patient status to discharged
         $stmt = $conn->prepare("UPDATE patients SET 
             status = 'Discharged',
-            date_of_discharge = ? 
+            date_of_discharge = ?,
+            floor_number = 'N/A',
+            room_number = 'N/A'
             WHERE patient_id = ?");
         $stmt->bind_param("si", $discharge_date, $patient_id);
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to update patient discharge status");
+        }
+        
+        // Update room status to vacant and remove patient assignment
+        $room_stmt = $conn->prepare("UPDATE rooms SET status = 'Vacant', patient_id = NULL WHERE patient_id = ?");
+        $room_stmt->bind_param("i", $patient_id);
+        
+        if (!$room_stmt->execute()) {
+            // Log the error but don't fail the discharge process
+            error_log("Warning: Failed to update room status during patient discharge for patient_id: $patient_id");
         }
         
         // Create discharge record in medical_records

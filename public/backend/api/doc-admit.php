@@ -19,6 +19,7 @@ ob_start();
 
 try {
     require_once '../db_connect.php';
+    require_once 'auth_helpers.php';
 } catch (Exception $e) {
     // Clear any output and send JSON error
     ob_clean();
@@ -30,8 +31,17 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Handle patient admission
-    $doctor_id = 1; // TODO: Get from session/authentication
+    // Get doctor ID from authentication
+    $doctor_id = getDoctorIdFromAuth();
+    
+    if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+        ob_clean();
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Unauthorized: Invalid or missing doctor authentication'
+        ]);
+        exit;
+    }
     $patient_id = $_POST['patient_id'] ?? null;
     $date_of_birth = $_POST['date_of_birth'] ?? null;
     $blood_type = $_POST['blood_type'] ?? null;
@@ -83,6 +93,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!$stmt->execute()) {
             throw new Exception("Failed to update patient admission details");
+        }
+        
+        // Update room status if room information is provided and not N/A
+        if ($floor_number !== 'N/A' && $room_number !== 'N/A') {
+            // Find the room by floor and room number
+            $room_stmt = $conn->prepare("SELECT room_id, status FROM rooms WHERE floor = ? AND room_number = ?");
+            $room_stmt->bind_param("is", $floor_number, $room_number);
+            $room_stmt->execute();
+            $room_result = $room_stmt->get_result();
+            
+            if ($room_result->num_rows > 0) {
+                $room_data = $room_result->fetch_assoc();
+                $room_id = $room_data['room_id'];
+                $current_status = $room_data['status'];
+                
+                // Check if room is available
+                if ($current_status === 'Vacant') {
+                    // Update room to occupied and assign patient
+                    $update_room_stmt = $conn->prepare("UPDATE rooms SET status = 'Occupied', patient_id = ? WHERE room_id = ?");
+                    $update_room_stmt->bind_param("ii", $patient_id, $room_id);
+                    
+                    if (!$update_room_stmt->execute()) {
+                        throw new Exception("Failed to update room status");
+                    }
+                } else {
+                    // Room is not vacant, but continue with admission - just log it
+                    error_log("Warning: Room $room_number on floor $floor_number is not vacant but patient was assigned to it");
+                }
+            } else {
+                // Room doesn't exist, but continue with admission - just log it
+                error_log("Warning: Room $room_number on floor $floor_number does not exist in rooms table");
+            }
         }
         
         // Create admission record in medical_records

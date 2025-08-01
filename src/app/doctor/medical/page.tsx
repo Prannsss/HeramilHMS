@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -32,6 +32,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useUserStore } from '@/hooks/use-user-store';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+
+interface MedicalEntry {
+  date: string;
+  type: string;
+  details: string;
+  timestamp: number;
+}
 
 interface MedicalRecord {
   id: string;
@@ -41,6 +52,8 @@ interface MedicalRecord {
   dateOfAdmission: string;
   type: string;
   details: string;
+  entries?: MedicalEntry[];
+  entryCount: number;
   bill: {
     invoiceId: string;
     status: string;
@@ -48,30 +61,46 @@ interface MedicalRecord {
   };
 }
 
-function MedicalRecordModal({ record, onClose }: { record: MedicalRecord | null; onClose: () => void }) {
+function MedicalRecordModal({ record, onClose, doctorId }: { record: MedicalRecord | null; onClose: () => void; doctorId: number | null }) {
   const [detailedRecord, setDetailedRecord] = useState<MedicalRecord | null>(null);
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (record?.id) {
-      fetchRecordDetails(record.id);
+    if (record?.id && doctorId) {
+      fetchRecordDetails(record.id, doctorId);
     }
-  }, [record?.id]);
+  }, [record?.id, doctorId]);
 
-  const fetchRecordDetails = async (recordId: string) => {
+  const fetchRecordDetails = async (recordId: string, doctorId: number) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-medical.php?action=record_details&record_id=${recordId}`);
+      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-medical.php?action=record_details&record_id=${recordId}&doctor_id=${doctorId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       const result = await response.json();
       
       if (result.success) {
         setDetailedRecord(result.data);
       } else {
         console.error('Failed to fetch record details:', result.error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error || "Failed to fetch record details",
+        });
         setDetailedRecord(record);
       }
     } catch (error) {
       console.error('Error fetching record details:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to connect to server",
+      });
       setDetailedRecord(record);
     } finally {
       setLoading(false);
@@ -90,7 +119,14 @@ function MedicalRecordModal({ record, onClose }: { record: MedicalRecord | null;
   return (
     <DialogContent className="sm:max-w-lg">
       <DialogHeader>
-        <DialogTitle>Medical Record Details</DialogTitle>
+        <DialogTitle>
+          Medical Record Details
+          {displayRecord.entryCount > 1 && (
+            <Badge variant="secondary" className="ml-2 text-xs">
+              Consolidated ({displayRecord.entryCount} entries)
+            </Badge>
+          )}
+        </DialogTitle>
         <DialogDescription>
           Record ID: {displayRecord.id}
         </DialogDescription>
@@ -124,8 +160,22 @@ function MedicalRecordModal({ record, onClose }: { record: MedicalRecord | null;
                 <p>{displayRecord.type}</p>
               </div>
               <div className="col-span-2">
-                <p className="font-medium text-muted-foreground">Details</p>
-                <p>{displayRecord.details}</p>
+                <p className="font-medium text-muted-foreground">Medical Entries ({displayRecord.entryCount || 1})</p>
+                {displayRecord.entries && displayRecord.entries.length > 0 ? (
+                  <div className="space-y-3 mt-2">
+                    {displayRecord.entries.map((entry, index) => (
+                      <div key={index} className="border-l-2 border-blue-200 pl-3 py-2 bg-gray-50 rounded-r">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-medium text-sm text-blue-700">{entry.type}</span>
+                          <span className="text-xs text-gray-500">{entry.date}</span>
+                        </div>
+                        <p className="text-sm text-gray-700">{entry.details}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 p-3 bg-gray-50 rounded border-l-2 border-blue-200">{displayRecord.details}</p>
+                )}
               </div>
             </div>
             <div className="border-t pt-4">
@@ -174,35 +224,88 @@ export default function DoctorMedicalPage() {
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+  
+  const { user, isAuthenticated, getDoctorId, hasHydrated } = useUserStore();
+  const router = useRouter();
+  const { toast } = useToast();
 
+  // Check authentication once the store is hydrated
   useEffect(() => {
-    fetchMedicalRecords();
-  }, []);
+    if (!hasHydrated) return; // Wait for store to hydrate
+    
+    // Check if user is authenticated and is a doctor
+    if (!isAuthenticated() || user?.role !== 'Doctor') {
+      router.push('/');
+      return;
+    }
 
-  const fetchMedicalRecords = async () => {
+    const doctorId = getDoctorId();
+    if (!doctorId) {
+      setError('No doctor ID found in authentication');
+      setLoading(false);
+      return;
+    }
+
+    fetchMedicalRecords(doctorId);
+    setIsAuthChecked(true);
+  }, [hasHydrated, user, isAuthenticated, getDoctorId, router]);
+
+  const fetchMedicalRecords = async (doctorId: number) => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/doc-medical.php?action=records');
+      setError(null);
+      
+      const response = await fetch(`http://localhost/HeramilHMS/public/backend/api/doc-medical.php?action=records&doctor_id=${doctorId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       const result = await response.json();
       
       if (result.success) {
-        setRecords(result.data);
+        setRecords(result.data || []);
       } else {
+        setError(result.error || 'Failed to fetch medical records');
         console.error('Failed to fetch medical records:', result.error);
       }
     } catch (error) {
+      setError('Failed to connect to server. Please ensure the backend is running.');
       console.error('Error fetching medical records:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredRecords = records.filter(record =>
-    record.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRecords = records.filter(record => {
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Search in patient name and main type
+    if (record.patient.name.toLowerCase().includes(searchLower) ||
+        record.type.toLowerCase().includes(searchLower)) {
+      return true;
+    }
+    
+    // Search in individual entries for consolidated records
+    if (record.entries && record.entries.length > 0) {
+      return record.entries.some(entry => 
+        entry.type.toLowerCase().includes(searchLower) ||
+        entry.details.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Search in main details for non-consolidated records
+    return record.details.toLowerCase().includes(searchLower);
+  });
   
   const getBadgeVariant = (type: string) => {
+    // Handle multiple types separated by commas
+    if (type.includes(',')) {
+      return 'default'; // Mixed types - use default
+    }
+    
     switch (type) {
       case 'Prescription':
         return 'default';
@@ -217,6 +320,14 @@ export default function DoctorMedicalPage() {
     }
   };
 
+  const getDisplayType = (record: MedicalRecord) => {
+    // If it's a consolidated record with multiple types, show the summary
+    if (record.entryCount > 1 && record.type.includes(',')) {
+      return record.type; // This will be something like "Diagnosis, Prescription"
+    }
+    return record.type;
+  };
+
   const handleViewRecord = (record: MedicalRecord) => {
     setSelectedRecord(record);
     setIsModalOpen(true);
@@ -227,19 +338,72 @@ export default function DoctorMedicalPage() {
     setSelectedRecord(null);
   };
 
+  if (!hasHydrated || !isAuthChecked || loading) {
+    return (
+      <DashboardLayout role="doctor">
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Your Patient Records</CardTitle>
+            <CardDescription>
+              Loading your medical records...
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-center items-center h-32">
+              <div className="text-muted-foreground">Loading medical records...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout role="doctor">
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Your Patient Records</CardTitle>
+            <CardDescription>
+              Error loading medical records
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            <Button 
+              onClick={() => {
+                const doctorId = getDoctorId();
+                if (doctorId) {
+                  fetchMedicalRecords(doctorId);
+                }
+              }} 
+              className="mt-4"
+              variant="outline"
+            >
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout role="doctor">
       <Card className="mt-8">
         <CardHeader>
           <CardTitle>Your Patient Records</CardTitle>
           <CardDescription>
-            A list of medical records for your assigned patients.
+            Consolidated medical records for your assigned patients.
           </CardDescription>
            <div className="flex items-center gap-4 pt-4">
             <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by patient or type..."
+                  placeholder="Search by patient, type, or entry details..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -260,6 +424,7 @@ export default function DoctorMedicalPage() {
                   <TableHead>Patient</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Entries</TableHead>
                   <TableHead>Details</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -273,7 +438,12 @@ export default function DoctorMedicalPage() {
                     </TableCell>
                     <TableCell>{record.date}</TableCell>
                     <TableCell>
-                      <Badge variant={getBadgeVariant(record.type)}>{record.type}</Badge>
+                      <Badge variant={getBadgeVariant(record.type)}>{getDisplayType(record)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {record.entryCount || 1} {(record.entryCount || 1) === 1 ? 'entry' : 'entries'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{record.details}</TableCell>
                     <TableCell className="text-right">
@@ -289,7 +459,7 @@ export default function DoctorMedicalPage() {
                 ))}
                 {filteredRecords.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No medical records found.
                     </TableCell>
                   </TableRow>
@@ -306,7 +476,7 @@ export default function DoctorMedicalPage() {
       </Card>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <MedicalRecordModal record={selectedRecord} onClose={handleCloseModal} />
+        <MedicalRecordModal record={selectedRecord} onClose={handleCloseModal} doctorId={getDoctorId()} />
       </Dialog>
     </DashboardLayout>
   );

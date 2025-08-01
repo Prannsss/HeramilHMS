@@ -10,8 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Include database connection
+// Include database connection and auth helpers
 require_once '../db_connect.php';
+require_once 'auth_helpers.php';
 
 try {
     $method = $_SERVER['REQUEST_METHOD'];
@@ -35,8 +36,14 @@ try {
 
 function handleGet($conn) {
     try {
-        // Get doctor ID from query parameter (default to 1 for Dr. Jayson Ado)
-        $doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : 1;
+        // Get doctor ID from authentication
+        $doctor_id = getDoctorIdFromAuth();
+        
+        if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+            return;
+        }
         
         // Get current date for filtering today's appointments
         $today = date('Y-m-d');
@@ -100,25 +107,28 @@ function handleGet($conn) {
             ];
         }
         
-        // Fetch patients who have scheduled appointments with this doctor or are active
+        // Fetch patients who have appointments with this specific doctor
         $patients_query = "
             SELECT DISTINCT
                 p.patient_id,
                 p.name,
+                p.age,
                 p.contact_number,
                 p.address,
                 p.date_of_birth,
                 p.blood_type,
                 p.allergies,
+                p.gender,
                 p.date_of_admission,
                 p.reason_for_admission,
                 p.date_of_discharge,
                 p.status,
                 MAX(a.appointment_datetime) as last_appointment
             FROM patients p
-            LEFT JOIN appointments a ON p.patient_id = a.patient_id AND a.doctor_id = ?
-            WHERE p.status = 'Active' 
-            AND (a.status = 'Scheduled' OR a.status = 'Completed' OR a.appointment_id IS NULL)
+            INNER JOIN appointments a ON p.patient_id = a.patient_id
+            WHERE a.doctor_id = ?
+            AND p.status = 'Active' 
+            AND (a.status = 'Scheduled' OR a.status = 'Completed')
             GROUP BY p.patient_id
             ORDER BY last_appointment DESC, p.date_of_admission DESC
             LIMIT 20
@@ -142,8 +152,11 @@ function handleGet($conn) {
                 'patient_id' => (int) $row['patient_id'],
                 'name' => $row['name'],
                 'email' => $email,
+                'age' => (int) ($row['age'] ?: 0),
                 'contact_number' => $row['contact_number'],
+                'address' => $row['address'],
                 'dob' => $row['date_of_birth'],
+                'gender' => $row['gender'] ?: 'Not specified',
                 'lastVisit' => $row['date_of_admission'],
                 'status' => $row['status'],
                 'bloodType' => $row['blood_type'] ?: 'Not specified',
@@ -183,7 +196,7 @@ function handlePost($conn) {
         
         // Handle saving diagnosis notes
         if (isset($input['action']) && $input['action'] === 'save_notes') {
-            $required_fields = ['patient_id', 'doctor_name', 'notes'];
+            $required_fields = ['patient_id', 'notes'];
             foreach ($required_fields as $field) {
                 if (!isset($input[$field]) || empty($input[$field])) {
                     http_response_code(400);
@@ -192,8 +205,32 @@ function handlePost($conn) {
                 }
             }
             
-            // Get doctor ID from doctor name (assuming we have the doctor_id available)
-            $doctor_id = isset($_GET['doctor_id']) ? (int)$_GET['doctor_id'] : 1;
+            // Get doctor ID from authentication or input
+            $doctor_id = isset($input['doctor_id']) ? intval($input['doctor_id']) : getDoctorIdFromAuth();
+            
+            if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+                http_response_code(401);
+                echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+                return;
+            }
+            
+            // Verify that the patient has an appointment with this doctor (security check)
+            $verify_stmt = $conn->prepare("
+                SELECT COUNT(*) as count 
+                FROM appointments 
+                WHERE patient_id = ? AND doctor_id = ? 
+                AND (status = 'Scheduled' OR status = 'Completed')
+            ");
+            $verify_stmt->bind_param("ii", $input['patient_id'], $doctor_id);
+            $verify_stmt->execute();
+            $verify_result = $verify_stmt->get_result();
+            $verify_row = $verify_result->fetch_assoc();
+            
+            if ($verify_row['count'] == 0) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Access denied: This patient is not assigned to you']);
+                return;
+            }
             
             // Insert diagnosis note into medical_records table
             $record_date = date('Y-m-d');
@@ -220,6 +257,106 @@ function handlePost($conn) {
                 ]);
             } else {
                 throw new Exception("Failed to save diagnosis notes: " . $stmt->error);
+            }
+        }
+        // Handle updating patient information
+        elseif (isset($input['action']) && $input['action'] === 'update_patient') {
+            $required_fields = ['patient_id'];
+            foreach ($required_fields as $field) {
+                if (!isset($input[$field]) || empty($input[$field])) {
+                    http_response_code(400);
+                    echo json_encode(['error' => "Field '$field' is required"]);
+                    return;
+                }
+            }
+            
+            // Get doctor ID from authentication or input
+            $doctor_id = isset($input['doctor_id']) ? intval($input['doctor_id']) : getDoctorIdFromAuth();
+            
+            if (!$doctor_id || !validateDoctor($conn, $doctor_id)) {
+                http_response_code(401);
+                echo json_encode(['error' => 'Unauthorized: Invalid or missing doctor authentication']);
+                return;
+            }
+            
+            // Verify that the patient has an appointment with this doctor (security check)
+            $verify_stmt = $conn->prepare("
+                SELECT COUNT(*) as count 
+                FROM appointments 
+                WHERE patient_id = ? AND doctor_id = ? 
+                AND (status = 'Scheduled' OR status = 'Completed')
+            ");
+            $verify_stmt->bind_param("ii", $input['patient_id'], $doctor_id);
+            $verify_stmt->execute();
+            $verify_result = $verify_stmt->get_result();
+            $verify_row = $verify_result->fetch_assoc();
+            
+            if ($verify_row['count'] == 0) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Access denied: This patient is not assigned to you']);
+                return;
+            }
+            
+            // Build update query dynamically based on provided fields
+            $update_fields = [];
+            $bind_types = "";
+            $bind_values = [];
+            
+            // Define allowed fields that doctors can update
+            $allowed_fields = [
+                'name' => 's',
+                'contact_number' => 's', 
+                'address' => 's',
+                'date_of_birth' => 's',
+                'age' => 'i',
+                'blood_type' => 's',
+                'allergies' => 's',
+                'gender' => 's'
+            ];
+            
+            foreach ($allowed_fields as $field => $type) {
+                if (isset($input[$field])) {
+                    $update_fields[] = "$field = ?";
+                    $bind_types .= $type;
+                    $bind_values[] = $input[$field];
+                }
+            }
+            
+            if (empty($update_fields)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'No valid fields provided for update']);
+                return;
+            }
+            
+            // Add patient_id to bind values for WHERE clause
+            $bind_types .= "i";
+            $bind_values[] = $input['patient_id'];
+            
+            $update_query = "UPDATE patients SET " . implode(', ', $update_fields) . " WHERE patient_id = ?";
+            
+            $stmt = $conn->prepare($update_query);
+            $stmt->bind_param($bind_types, ...$bind_values);
+            
+            if ($stmt->execute()) {
+                // Fetch updated patient data
+                $patient_stmt = $conn->prepare("
+                    SELECT patient_id, name, age, contact_number, address, date_of_birth, 
+                           blood_type, allergies, gender, status
+                    FROM patients 
+                    WHERE patient_id = ?
+                ");
+                $patient_stmt->bind_param("i", $input['patient_id']);
+                $patient_stmt->execute();
+                $patient_result = $patient_stmt->get_result();
+                $updated_patient = $patient_result->fetch_assoc();
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Patient information updated successfully',
+                    'patient' => $updated_patient
+                ]);
+            } else {
+                throw new Exception("Failed to update patient information: " . $stmt->error);
             }
         } else {
             http_response_code(400);

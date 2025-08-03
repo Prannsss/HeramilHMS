@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 01, 2025 at 09:43 AM
+-- Generation Time: Aug 03, 2025 at 09:26 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -108,6 +108,13 @@ CREATE TABLE `inventory` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `inventory`
+--
+
+INSERT INTO `inventory` (`item_id`, `name`, `category`, `stock_quantity`, `max_stock`, `unit_price`, `created_at`, `updated_at`) VALUES
+(9, 'Biogesic', '', 68, 100, 12.00, '2025-08-01 08:36:02', '2025-08-03 07:08:35');
+
 -- --------------------------------------------------------
 
 --
@@ -173,8 +180,8 @@ CREATE TABLE `rooms` (
 --
 
 INSERT INTO `rooms` (`room_id`, `room_number`, `floor`, `status`, `patient_id`, `created_at`, `updated_at`) VALUES
-(1, '101', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-08-01 06:45:11'),
-(2, '102', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-08-01 06:04:09'),
+(1, '101', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-08-03 06:20:27'),
+(2, '102', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-08-03 07:09:59'),
 (3, '103', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-07-21 17:19:48'),
 (4, '104', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-07-21 17:13:16'),
 (5, '105', 1, 'Vacant', NULL, '2025-07-21 16:11:50', '2025-07-23 15:12:03'),
@@ -334,19 +341,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `appointments`
 --
 ALTER TABLE `appointments`
-  MODIFY `appointment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `appointment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `bills`
 --
 ALTER TABLE `bills`
-  MODIFY `bill_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `bill_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `bill_items`
 --
 ALTER TABLE `bill_items`
-  MODIFY `bill_item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `bill_item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `doctors`
@@ -358,19 +365,19 @@ ALTER TABLE `doctors`
 -- AUTO_INCREMENT for table `inventory`
 --
 ALTER TABLE `inventory`
-  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `medical_records`
 --
 ALTER TABLE `medical_records`
-  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `record_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
 
 --
 -- AUTO_INCREMENT for table `patients`
 --
 ALTER TABLE `patients`
-  MODIFY `patient_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `patient_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `rooms`

@@ -60,7 +60,7 @@ function handleGet($conn) {
             throw new Exception("Doctor not found");
         }
         
-        // Fetch upcoming verified appointments for the doctor (not just today)
+        // Fetch upcoming verified appointments for the doctor (not just today, excluding automatic admission appointments)
         $appointments_query = "
             SELECT 
                 a.appointment_id,
@@ -75,6 +75,7 @@ function handleGet($conn) {
             WHERE a.doctor_id = ? 
             AND a.appointment_datetime >= NOW()
             AND a.status = 'Scheduled'
+            AND a.reason NOT LIKE 'Initial consultation -%'
             ORDER BY a.appointment_datetime ASC
         ";
         
@@ -107,7 +108,7 @@ function handleGet($conn) {
             ];
         }
         
-        // Fetch patients who have appointments with this specific doctor
+        // Fetch patients who have appointments with this specific doctor (including those assigned during admission)
         $patients_query = "
             SELECT DISTINCT
                 p.patient_id,
@@ -123,11 +124,11 @@ function handleGet($conn) {
                 p.reason_for_admission,
                 p.date_of_discharge,
                 p.status,
-                MAX(a.appointment_datetime) as last_appointment
+                COALESCE(MAX(a.appointment_datetime), p.date_of_admission) as last_appointment
             FROM patients p
             INNER JOIN appointments a ON p.patient_id = a.patient_id
             WHERE a.doctor_id = ?
-            AND p.status = 'Active' 
+            AND (p.status = 'Active' OR p.status = 'Admitted')
             AND (a.status = 'Scheduled' OR a.status = 'Completed')
             GROUP BY p.patient_id
             ORDER BY last_appointment DESC, p.date_of_admission DESC

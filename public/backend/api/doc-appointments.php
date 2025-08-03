@@ -48,7 +48,7 @@ function handleGet($conn) {
             return;
         }
         
-        // Fetch all appointments for the doctor
+        // Fetch all appointments for the doctor (excluding automatic admission appointments)
         $appointments_query = "
             SELECT 
                 a.appointment_id,
@@ -61,6 +61,8 @@ function handleGet($conn) {
             FROM appointments a
             JOIN patients p ON a.patient_id = p.patient_id
             WHERE a.doctor_id = ?
+            AND a.reason NOT LIKE 'Initial consultation -%'
+            AND a.status IN ('Pending', 'Scheduled', 'Completed', 'Rejected')
             ORDER BY a.appointment_datetime DESC
         ";
         

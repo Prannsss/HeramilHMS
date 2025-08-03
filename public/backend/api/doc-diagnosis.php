@@ -89,7 +89,7 @@ function addMedicalEntry($conn, $data) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['action'])) {
         if ($_GET['action'] === 'patients') {
-            // Get active patients for diagnosis - only patients with appointments for this doctor
+            // Get active and admitted patients for diagnosis - patients with appointments for this doctor
             try {
                 // Get doctor ID from authentication or request parameter
                 $doctor_id = getDoctorIdFromAuth();
@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         MAX(a.appointment_datetime) as last_visit
                     FROM patients p
                     INNER JOIN appointments a ON p.patient_id = a.patient_id
-                    WHERE p.status = 'Active' 
+                    WHERE (p.status = 'Active' OR p.status = 'Admitted')
                     AND a.doctor_id = ?
                     AND (a.status = 'Scheduled' OR a.status = 'Completed')
                     GROUP BY p.patient_id

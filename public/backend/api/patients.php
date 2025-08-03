@@ -28,14 +28,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 p.status,
                 p.date_of_admission,
                 p.reason_for_admission,
+                p.reason_for_appointment,
                 p.floor_number,
                 p.room_number,
                 p.date_of_discharge,
                 MAX(a.appointment_datetime) as last_visit,
-                d.name as doctor_name
+                COALESCE(
+                    (SELECT d2.name 
+                     FROM appointments a2 
+                     JOIN doctors d2 ON a2.doctor_id = d2.doctor_id 
+                     WHERE a2.patient_id = p.patient_id 
+                     AND a2.reason NOT LIKE 'Initial consultation -%'
+                     AND a2.status IN ('Scheduled', 'Completed')
+                     ORDER BY a2.appointment_datetime DESC 
+                     LIMIT 1),
+                    (SELECT d3.name 
+                     FROM appointments a3 
+                     JOIN doctors d3 ON a3.doctor_id = d3.doctor_id 
+                     WHERE a3.patient_id = p.patient_id 
+                     AND a3.status IN ('Scheduled', 'Completed')
+                     ORDER BY a3.appointment_datetime DESC 
+                     LIMIT 1)
+                ) as doctor_name
             FROM patients p
             LEFT JOIN appointments a ON p.patient_id = a.patient_id
-            LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
             GROUP BY p.patient_id
             ORDER BY p.patient_id DESC
         ";
@@ -104,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'allergies' => $row['allergies'] ?: 'None',
                 'dateOfAdmission' => $row['date_of_admission'] ?: date('Y-m-d'),
                 'reasonForAdmission' => $row['reason_for_admission'] ?: 'General consultation',
+                'reasonForAppointment' => $row['reason_for_appointment'] ?: null,
                 'floorNumber' => $row['floor_number'] ?: 'N/A',
                 'roomNumber' => $row['room_number'] ?: 'N/A',
                 'dateOfDischarge' => $row['date_of_discharge'],
@@ -316,6 +333,132 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         echo json_encode([
             'status' => 'error',
             'message' => 'Failed to update patient: ' . $e->getMessage()
+        ]);
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+        
+        // Validate required fields
+        $required_fields = ['name', 'age', 'gender', 'contact_number', 'address', 'date_of_birth', 'blood_type', 'floor_number', 'room_number', 'reason_for_admission'];
+        foreach ($required_fields as $field) {
+            if (!isset($input[$field]) || empty($input[$field])) {
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => "Missing required field: $field"
+                ]);
+                exit;
+            }
+        }
+        
+        // Start transaction
+        $conn->begin_transaction();
+        
+        try {
+            // Insert new patient with Admitted status by default
+            $insert_query = "
+                INSERT INTO patients (
+                    name, age, gender, contact_number, address, date_of_birth, 
+                    blood_type, allergies, status, date_of_admission, 
+                    reason_for_admission, floor_number, room_number
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Admitted', CURDATE(), ?, ?, ?)
+            ";
+            
+            $stmt = $conn->prepare($insert_query);
+            $allergies = $input['allergies'] ?: 'None';
+            
+            $stmt->bind_param(
+                "sisssssssss",
+                $input['name'],
+                $input['age'],
+                $input['gender'],
+                $input['contact_number'],
+                $input['address'],
+                $input['date_of_birth'],
+                $input['blood_type'],
+                $allergies,
+                $input['reason_for_admission'],
+                $input['floor_number'],
+                $input['room_number']
+            );
+            
+            if (!$stmt->execute()) {
+                throw new Exception('Failed to create patient: ' . $stmt->error);
+            }
+            
+            $patient_id = $conn->insert_id;
+            
+            // Create an appointment with the selected doctor if doctor_id is provided
+            if (isset($input['doctor_id']) && !empty($input['doctor_id'])) {
+                $appointment_query = "
+                    INSERT INTO appointments (patient_id, doctor_id, appointment_datetime, reason, status)
+                    VALUES (?, ?, NOW(), ?, 'Scheduled')
+                ";
+                
+                $appointment_stmt = $conn->prepare($appointment_query);
+                $appointment_reason = "Initial consultation - " . $input['reason_for_admission'];
+                $appointment_stmt->bind_param("iis", $patient_id, $input['doctor_id'], $appointment_reason);
+                
+                if (!$appointment_stmt->execute()) {
+                    error_log("Warning: Failed to create appointment for new patient: " . $appointment_stmt->error);
+                }
+            }
+            
+            // Update room status if room information is provided
+            if ($input['floor_number'] !== 'N/A' && $input['room_number'] !== 'N/A') {
+                // Find the room by floor and room number
+                $room_query = "SELECT room_id, status FROM rooms WHERE floor = ? AND room_number = ?";
+                $room_stmt = $conn->prepare($room_query);
+                $room_stmt->bind_param("is", $input['floor_number'], $input['room_number']);
+                $room_stmt->execute();
+                $room_result = $room_stmt->get_result();
+                
+                if ($room_result->num_rows > 0) {
+                    $room_data = $room_result->fetch_assoc();
+                    $room_id = $room_data['room_id'];
+                    $current_status = $room_data['status'];
+                    
+                    // Check if room is available
+                    if ($current_status === 'Vacant') {
+                        // Update room to occupied and assign patient
+                        $update_room_query = "UPDATE rooms SET status = 'Occupied', patient_id = ? WHERE room_id = ?";
+                        $update_room_stmt = $conn->prepare($update_room_query);
+                        $update_room_stmt->bind_param("ii", $patient_id, $room_id);
+                        
+                        if (!$update_room_stmt->execute()) {
+                            error_log("Warning: Failed to update room status for new patient: " . $update_room_stmt->error);
+                        }
+                    } else {
+                        // Room is not available, but we'll still create the patient
+                        error_log("Warning: Room {$input['room_number']} on floor {$input['floor_number']} is not vacant. Patient created but room not assigned.");
+                    }
+                } else {
+                    error_log("Warning: Room {$input['room_number']} on floor {$input['floor_number']} does not exist.");
+                }
+            }
+            
+            $conn->commit();
+            
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Patient created successfully',
+                'patient_id' => $patient_id
+            ]);
+            
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ]);
+        }
+        
+    } catch (Exception $e) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Failed to create patient: ' . $e->getMessage()
         ]);
     }
 }

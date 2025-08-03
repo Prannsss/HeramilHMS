@@ -50,6 +50,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useUserStore } from "@/hooks/use-user-store";
 
@@ -98,6 +105,22 @@ interface UsedItem {
   name: string;
   quantity: number;
   price: number;
+}
+
+interface FloorOption {
+  value: number;
+  label: string;
+}
+
+interface RoomOption {
+  value: string;
+  label: string;
+  room_id: number;
+}
+
+interface RoomsData {
+  floors: FloorOption[];
+  rooms_by_floor: Record<number, RoomOption[]>;
 }
 
 interface MedicalRecord {
@@ -473,6 +496,7 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave, u
 }) {
     const [prescription, setPrescription] = useState('');
     const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
+    const [quantityInputs, setQuantityInputs] = useState<Record<string, string>>({});
     const [patientDetails, setPatientDetails] = useState<PatientDetails | null>(null);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const { toast } = useToast();
@@ -525,19 +549,40 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave, u
 
     const handleItemCheck = (itemId: string, checked: boolean) => {
         const newSelectedItems = { ...selectedItems };
+        const newQuantityInputs = { ...quantityInputs };
         if (checked) {
             newSelectedItems[itemId] = 1;
+            newQuantityInputs[itemId] = '1';
         } else {
             delete newSelectedItems[itemId];
+            delete newQuantityInputs[itemId];
         }
         setSelectedItems(newSelectedItems);
+        setQuantityInputs(newQuantityInputs);
     };
 
-    const handleQuantityChange = (itemId: string, quantity: number) => {
-        setSelectedItems({
-            ...selectedItems,
-            [itemId]: Math.max(1, quantity),
+    const handleQuantityChange = (itemId: string, value: string) => {
+        // Update the display value immediately (allow empty string)
+        setQuantityInputs({
+            ...quantityInputs,
+            [itemId]: value,
         });
+
+        // Parse and validate the quantity for internal state
+        const quantity = parseInt(value, 10);
+        if (!isNaN(quantity) && quantity >= 1) {
+            setSelectedItems({
+                ...selectedItems,
+                [itemId]: quantity,
+            });
+        } else if (value === '') {
+            // If input is empty, keep the item selected but set quantity to 1 as fallback
+            setSelectedItems({
+                ...selectedItems,
+                [itemId]: 1,
+            });
+        }
+        // If invalid input (not empty, not valid number), keep the previous valid quantity
     };
 
     const handleSave = () => {
@@ -556,11 +601,13 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave, u
         onOpenChange(false);
         setPrescription('');
         setSelectedItems({});
+        setQuantityInputs({});
     };
 
     const resetState = () => {
         setPrescription('');
         setSelectedItems({});
+        setQuantityInputs({});
         setPatientDetails(null);
     };
     
@@ -611,7 +658,7 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave, u
                       {/* Recent Diagnoses */}
                       {patientDetails?.diagnoses && patientDetails.diagnoses.length > 0 && (
                         <div className="border rounded-lg p-4">
-                          <h4 className="font-medium mb-3">Recent Diagnoses</h4>
+                          <h4 className="font-medium mb-3">Recent Diagnosis</h4>
                           <div className="space-y-2">
                             {patientDetails.diagnoses.slice(0, 3).map((diagnosis) => (
                               <div key={diagnosis.id} className="text-xs border-l-2 border-green-200 pl-2">
@@ -679,8 +726,17 @@ function PrescriptionModal({ patient, inventory, isOpen, onOpenChange, onSave, u
                                                       type="number"
                                                       min="1"
                                                       max={item.stock_quantity}
-                                                      value={selectedItems[item.id]}
-                                                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10))}
+                                                      value={quantityInputs[item.id] !== undefined ? quantityInputs[item.id] : selectedItems[item.id]}
+                                                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                      onBlur={(e) => {
+                                                        // If input is empty on blur, set it back to 1
+                                                        if (e.target.value === '') {
+                                                          setQuantityInputs({
+                                                            ...quantityInputs,
+                                                            [item.id]: '1',
+                                                          });
+                                                        }
+                                                      }}
                                                       className="h-8 w-20"
                                                   />
                                               </div>
@@ -719,7 +775,45 @@ function AdmitPatientModal({ patient, isOpen, onOpenChange, onSave }: {
     const [reasonForAdmission, setReasonForAdmission] = useState('');
     const [floorNumber, setFloorNumber] = useState('');
     const [roomNumber, setRoomNumber] = useState('');
+    const [roomsData, setRoomsData] = useState<RoomsData | null>(null);
+    const [isLoadingRooms, setIsLoadingRooms] = useState(false);
     const { toast } = useToast();
+
+    // Fetch available rooms when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchAvailableRooms();
+        }
+    }, [isOpen]);
+
+    const fetchAvailableRooms = async () => {
+        setIsLoadingRooms(true);
+        try {
+            const response = await fetch('http://localhost/HeramilHMS/public/backend/api/available-rooms.php?forDropdown=true');
+            const data = await response.json();
+            
+            if (data.success) {
+                setRoomsData(data.data);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: 'Failed to load available rooms',
+                    duration: 3000,
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching rooms:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to load available rooms',
+                duration: 3000,
+            });
+        } finally {
+            setIsLoadingRooms(false);
+        }
+    };
 
     // Reset form when modal opens/closes
     useEffect(() => {
@@ -730,8 +824,8 @@ function AdmitPatientModal({ patient, isOpen, onOpenChange, onSave }: {
             setAllergies(patient.allergies || '');
             setAdmissionDate(new Date().toISOString().split('T')[0]);
             setReasonForAdmission(patient.reasonForAdmission || '');
-            setFloorNumber(patient.floorNumber || '');
-            setRoomNumber(patient.roomNumber || '');
+            setFloorNumber(patient.floorNumber !== 'N/A' ? patient.floorNumber : '');
+            setRoomNumber(patient.roomNumber !== 'N/A' ? patient.roomNumber : '');
         } else {
             // Reset form
             setDateOfBirth('');
@@ -743,6 +837,12 @@ function AdmitPatientModal({ patient, isOpen, onOpenChange, onSave }: {
             setRoomNumber('');
         }
     }, [isOpen, patient]);
+
+    // Reset room number when floor changes
+    const handleFloorChange = (value: string) => {
+        setFloorNumber(value);
+        setRoomNumber(''); // Reset room selection when floor changes
+    };
 
     const handleSave = () => {
         if (!patient) return;
@@ -772,6 +872,10 @@ function AdmitPatientModal({ patient, isOpen, onOpenChange, onSave }: {
     };
 
     if (!patient) return null;
+
+    const availableRooms = floorNumber && roomsData ? 
+        roomsData.rooms_by_floor[parseInt(floorNumber)] || [] : 
+        [];
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -832,25 +936,48 @@ function AdmitPatientModal({ patient, isOpen, onOpenChange, onSave }: {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="floorNumber">Floor Number</Label>
-                            <Input
-                                id="floorNumber"
-                                type="text"
-                                value={floorNumber}
-                                onChange={(e) => setFloorNumber(e.target.value)}
-                                placeholder="e.g., 1, 2, 3"
-                                className="mt-2"
-                            />
+                            {isLoadingRooms ? (
+                                <div className="flex items-center space-x-2 mt-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span className="text-sm text-muted-foreground">Loading floors...</span>
+                                </div>
+                            ) : (
+                                <Select value={floorNumber} onValueChange={handleFloorChange}>
+                                    <SelectTrigger className="mt-2">
+                                        <SelectValue placeholder="Select floor" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roomsData?.floors.map((floor) => (
+                                            <SelectItem key={floor.value} value={floor.value.toString()}>
+                                                {floor.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
                         <div>
                             <Label htmlFor="roomNumber">Room Number</Label>
-                            <Input
-                                id="roomNumber"
-                                type="text"
-                                value={roomNumber}
-                                onChange={(e) => setRoomNumber(e.target.value)}
-                                placeholder="e.g., 101, 202, 303"
-                                className="mt-2"
-                            />
+                            <Select 
+                                value={roomNumber} 
+                                onValueChange={setRoomNumber}
+                                disabled={!floorNumber || isLoadingRooms}
+                            >
+                                <SelectTrigger className="mt-2">
+                                    <SelectValue placeholder={
+                                        !floorNumber ? "Select floor first" : 
+                                        availableRooms.length === 0 ? "No rooms available" :
+                                        "Select room"
+                                    } />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableRooms.map((room) => (
+                                        <SelectItem key={room.room_id} value={room.value}>
+                                            {room.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                     

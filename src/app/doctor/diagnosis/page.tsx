@@ -106,7 +106,17 @@ function PatientCombobox({ patients, field }: { patients: Patient[], field: any 
                         : "opacity-0"
                     )}
                   />
-                  {patient.name}
+                  <div className="flex items-center justify-between w-full">
+                    <span>{patient.name}</span>
+                    <span className={cn(
+                      "text-xs px-2 py-1 rounded-full font-medium",
+                      patient.status === 'Admitted' 
+                        ? 'bg-red-100 text-red-700' 
+                        : 'bg-green-100 text-green-700'
+                    )}>
+                      {patient.status}
+                    </span>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -264,7 +274,7 @@ export default function DiagnosisPage() {
     <DashboardLayout role="doctor">
       <PageHeader 
         title="Diagnosis" 
-        description="Create and manage patient diagnoses"
+        description="Create and manage patient diagnosis"
       />
       
       {!hasHydrated || !isAuthChecked || isLoadingPatients ? (
@@ -322,6 +332,15 @@ export default function DiagnosisPage() {
                           <div>
                             <p className="font-medium text-muted-foreground">Gender</p>
                             <p>{selectedPatient.gender}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-muted-foreground">Status</p>
+                            <p className={cn(
+                              "font-medium",
+                              selectedPatient.status === 'Admitted' ? 'text-red-600' : 'text-green-600'
+                            )}>
+                              {selectedPatient.status}
+                            </p>
                           </div>
                           <div>
                             <p className="font-medium text-muted-foreground">DOA</p>

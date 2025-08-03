@@ -1,7 +1,7 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
 require_once '../db_connect.php';
@@ -129,6 +129,11 @@ function createAppointment() {
         $time = trim($input['time']);
         $doctorId = intval($input['doctorId']);
         $reason = trim($input['reason']);
+        
+        // Validate doctorId is a valid integer
+        if ($doctorId <= 0) {
+            throw new Exception("Invalid doctor ID: " . $input['doctorId']);
+        }
         
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {

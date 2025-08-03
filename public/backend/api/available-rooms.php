@@ -76,8 +76,56 @@ switch ($_SERVER['REQUEST_METHOD']) {
         try {
             $floor = isset($_GET['floor']) ? intval($_GET['floor']) : null;
             $groupByFloor = isset($_GET['groupByFloor']) && $_GET['groupByFloor'] === 'true';
+            $forDropdown = isset($_GET['forDropdown']) && $_GET['forDropdown'] === 'true';
             
-            if ($groupByFloor) {
+            if ($forDropdown) {
+                // Get all floors for dropdown
+                $floors_query = "SELECT DISTINCT floor FROM rooms ORDER BY floor";
+                $floors_result = $conn->query($floors_query);
+                $floors = [];
+                
+                while ($row = $floors_result->fetch_assoc()) {
+                    $floors[] = [
+                        'value' => $row['floor'],
+                        'label' => 'Floor ' . $row['floor']
+                    ];
+                }
+                
+                // Get vacant rooms grouped by floor for dropdown
+                $rooms_query = "
+                    SELECT 
+                        r.room_id,
+                        r.room_number,
+                        r.floor,
+                        r.status
+                    FROM rooms r
+                    WHERE r.status = 'Vacant'
+                    ORDER BY r.floor, r.room_number
+                ";
+                
+                $rooms_result = $conn->query($rooms_query);
+                $rooms_by_floor = [];
+                
+                while ($row = $rooms_result->fetch_assoc()) {
+                    $floor_num = $row['floor'];
+                    if (!isset($rooms_by_floor[$floor_num])) {
+                        $rooms_by_floor[$floor_num] = [];
+                    }
+                    $rooms_by_floor[$floor_num][] = [
+                        'value' => $row['room_number'],
+                        'label' => 'Room ' . $row['room_number'],
+                        'room_id' => $row['room_id']
+                    ];
+                }
+                
+                $response = [
+                    'success' => true,
+                    'data' => [
+                        'floors' => $floors,
+                        'rooms_by_floor' => $rooms_by_floor
+                    ]
+                ];
+            } else if ($groupByFloor) {
                 $response = [
                     'success' => true,
                     'data' => getAvailableRoomsByFloor($conn)

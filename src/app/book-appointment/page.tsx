@@ -234,17 +234,13 @@ export default function BookAppointmentPage() {
 
       console.log('Submitting appointment:', appointmentData);
 
-      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/appointments.php', {
+      const response = await fetch('http://localhost/HeramilHMS/public/backend/api/book-appointment.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(appointmentData),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
 
       const responseText = await response.text();
       console.log('Appointment response:', responseText);
@@ -272,15 +268,22 @@ export default function BookAppointmentPage() {
             description: 'We have successfully received your appointment. Please verify your appointment through an automated email that will be sent to you.',
           });
         } else {
+          // Handle specific error from backend
           toast({
-            title: 'Error',
+            title: 'Booking Failed',
             description: result.message || 'Failed to submit appointment. Please try again.',
             variant: 'destructive',
           });
         }
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
-        throw new Error('Server returned invalid JSON response');
+        
+        // If we can't parse JSON but got a response, show generic error
+        toast({
+          title: 'Submission Failed',
+          description: 'Server returned an invalid response. Please try again.',
+          variant: 'destructive',
+        });
       }
 
     } catch (error) {

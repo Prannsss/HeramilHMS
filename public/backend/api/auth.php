@@ -4,17 +4,14 @@ header("Content-Type: application/json");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 
-// Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
 include("../db_connect.php");
 
-// Decode JSON input
 $data = json_decode(file_get_contents("php://input"), true);
 
-// Validate input
 if (empty($data["email"]) || empty($data["password"])) {
     echo json_encode(["status" => "error", "message" => "Email and password are required."]);
     exit;
@@ -22,9 +19,8 @@ if (empty($data["email"]) || empty($data["password"])) {
 
 $email = $data["email"];
 $password = $data["password"];
-$password_hash = hash("sha256", $password); // Match the DB hash format
+$password_hash = hash("sha256", $password); 
 
-// Use prepared statement to prevent SQL injection
 $stmt = $conn->prepare("SELECT user_id, role, email FROM users WHERE email = ? AND password_hash = ?");
 $stmt->bind_param("ss", $email, $password_hash);
 $stmt->execute();
@@ -53,11 +49,9 @@ if ($result && $result->num_rows === 1) {
             $response_user["name"] = $doctor["name"];
             $response_user["specialization"] = $doctor["specialization"];
             $response_user["department"] = $doctor["department"];
-            // Email is already set from users table
         }
         $doctor_stmt->close();
     } else if ($user["role"] === "Admin") {
-        // For admin users, we can set a default name or fetch from an admins table if it exists
         $response_user["name"] = "Administrator";
     }
     

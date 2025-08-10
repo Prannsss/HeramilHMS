@@ -4,7 +4,6 @@ header("Content-Type: application/json");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
@@ -13,7 +12,6 @@ require_once '../db_connect.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     try {
-        // Get all appointments with patient and doctor information
         $appointments_query = "
             SELECT 
                 a.appointment_id,
@@ -37,15 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $appointment_date = date('Y-m-d', strtotime($row['appointment_datetime']));
             $appointment_time = date('h:i A', strtotime($row['appointment_datetime']));
             
-            // Generate email from name if contact is just a phone number
             $email = $row['patient_contact'];
             if (preg_match('/^[\d\s\-\+\(\)]+$/', $email)) {
-                // If it's just a phone number, generate an email
                 $email = strtolower(str_replace(' ', '.', $row['patient_name'])) . '@email.com';
             }
             
-            // Map database status to UI status
-            $ui_status = 'Requests'; // Default
+            $ui_status = 'Requests';
             switch ($row['status']) {
                 case 'Scheduled':
                     $ui_status = 'Verified';
@@ -75,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'time' => $appointment_time,
                 'reason' => $row['reason'],
                 'status' => $ui_status,
-                'db_status' => $row['status'], // Keep original status for backend operations
-                'appointment_id' => $row['appointment_id'] // Keep original ID for backend operations
+                'db_status' => $row['status'],
+                'appointment_id' => $row['appointment_id']
             ];
         }
         
@@ -97,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        // Validate required fields
         $required_fields = ['name', 'email', 'mobile', 'address', 'date', 'time', 'doctorId', 'reason'];
         foreach ($required_fields as $field) {
             if (!isset($input[$field]) || empty(trim($input[$field]))) {
@@ -109,7 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Check if patient exists, if not create one
         $patient_query = "SELECT patient_id FROM patients WHERE contact_number = ?";
         $stmt = $conn->prepare($patient_query);
         $stmt->bind_param("s", $input['mobile']);
@@ -117,17 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $stmt->get_result();
         
         if ($result->num_rows > 0) {
-            // Patient exists, get the ID
             $patient = $result->fetch_assoc();
             $patient_id = $patient['patient_id'];
             
-            // Update patient information
             $update_patient_query = "UPDATE patients SET name = ?, contact_number = ?, address = ? WHERE patient_id = ?";
             $stmt = $conn->prepare($update_patient_query);
             $stmt->bind_param("sssi", $input['name'], $input['mobile'], $input['address'], $patient_id);
             $stmt->execute();
         } else {
-            // Create new patient with only basic contact information
             $insert_patient_query = "INSERT INTO patients (name, contact_number, address) VALUES (?, ?, ?)";
             $stmt = $conn->prepare($insert_patient_query);
             $stmt->bind_param("sss", $input['name'], $input['mobile'], $input['address']);
@@ -143,7 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        // Extract doctor ID (remove 'STF' prefix if present and convert to integer)
         $doctor_id = $input['doctorId'];
         if (strpos($doctor_id, 'STF') === 0) {
             $doctor_id = (int)substr($doctor_id, 3);
@@ -151,10 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $doctor_id = (int)$doctor_id;
         }
         
-        // Combine date and time for appointment_datetime
         $appointment_datetime = $input['date'] . ' ' . date('H:i:s', strtotime($input['time']));
         
-        // Create appointment
         $insert_appointment_query = "INSERT INTO appointments (patient_id, doctor_id, appointment_datetime, reason, status) VALUES (?, ?, ?, ?, 'Pending')";
         $stmt = $conn->prepare($insert_appointment_query);
         $stmt->bind_param("iiss", $patient_id, $doctor_id, $appointment_datetime, $input['reason']);
@@ -206,8 +193,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $stmt->bind_param("si", $db_status, $appointment_id);
         
         if ($stmt->execute()) {
-            // If appointment is verified (scheduled), mark the patient as active for appointments
-            // but do not auto-fill medical details - those will be filled by the doctor
             if ($db_status === 'Scheduled') {
                 $patient_update_query = "
                     UPDATE patients 

@@ -66,7 +66,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 
 type StaffStatus = "Active" | "On Leave" | "Retired";
-type Role = "General Medicine" | "Cardiologist" | "Pediatrician" | "Radiologist" | "Registered Nurse" | "Administrator";
+type Role = "General Medicine" | "Cardiologist" | "Pediatrician" | "Radiologist" | "Registered Nurse" | "Urologist" | "Dermatologist" | "Neurologist" | "Orthopedic Surgeon" | "Administrator";
 
 const roleDepartmentMap: Record<Role, string> = {
     "General Medicine": "General Medicine",
@@ -75,6 +75,10 @@ const roleDepartmentMap: Record<Role, string> = {
     Radiologist: "Radiology",
     "Registered Nurse": "Emergency",
     Administrator: "Administration",
+    Urologist: "Urology",
+    Dermatologist: "Dermatology",
+    Neurologist: "Neurology",
+    "Orthopedic Surgeon": "Orthopedics",
 };
 
 type StaffMember = {

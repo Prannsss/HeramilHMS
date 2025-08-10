@@ -4,13 +4,11 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// Include database connection
 require_once '../db_connect.php';
 
 try {
@@ -62,10 +60,8 @@ function handleGet($conn) {
         
         $bills = [];
         while ($row = $result->fetch_assoc()) {
-            // Format the invoice ID to match frontend expectations
             $invoiceId = 'INV-' . date('Y', strtotime($row['date'])) . '-' . str_pad($row['bill_id'], 3, '0', STR_PAD_LEFT);
             
-            // Get bill items for this bill
             $items_query = "SELECT description, quantity, unit_price, line_total FROM bill_items WHERE bill_id = ?";
             $items_stmt = $conn->prepare($items_query);
             $items_stmt->bind_param("i", $row['bill_id']);
@@ -195,11 +191,9 @@ function handlePut($conn) {
             return;
         }
         
-        // Extract numeric bill ID from invoice ID (INV-2024-001 -> 1)
         $invoice_parts = explode('-', $input['invoiceId']);
         $bill_id = (int) $invoice_parts[2];
-        
-        // Check if this is a status update
+
         if (isset($input['status'])) {
             $stmt = $conn->prepare("UPDATE bills SET status = ? WHERE bill_id = ?");
             $stmt->bind_param("si", $input['status'], $bill_id);
@@ -213,7 +207,6 @@ function handlePut($conn) {
                 throw new Exception("Failed to update bill status: " . $stmt->error);
             }
         } else {
-            // Full bill update (if needed in the future)
             http_response_code(400);
             echo json_encode(['error' => 'Only status updates are currently supported']);
         }
@@ -234,15 +227,12 @@ function handleDelete($conn) {
             return;
         }
         
-        // Extract numeric bill ID from invoice ID (INV-2024-001 -> 1)
         $invoice_parts = explode('-', $input['invoiceId']);
         $bill_id = (int) $invoice_parts[2];
         
-        // Start transaction
         $conn->begin_transaction();
         
         try {
-            // Delete bill items first (due to foreign key constraint)
             $items_stmt = $conn->prepare("DELETE FROM bill_items WHERE bill_id = ?");
             $items_stmt->bind_param("i", $bill_id);
             $items_stmt->execute();

@@ -12,6 +12,7 @@ import {
 import Logo from "@/components/logo";
 import { DashboardNav } from "@/components/dashboard-nav";
 import { UserNav } from "@/components/user-nav";
+import { SimpleThemeToggle } from "@/components/theme-toggle";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import Link from "next/link";
 
@@ -41,13 +42,14 @@ export default function DashboardLayout({
         </div>
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 py-1 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-2">
           <SidebarTrigger className="sm:hidden" />
-          <div className="ml-auto flex items-center">
+          <div className="ml-auto flex items-center gap-2">
+            <SimpleThemeToggle />
             <UserNav />
           </div>
         </header>
-        <main className="p-4 sm:px-6 sm:py-0">{children}</main>
+        <main className="p-4 sm:px-6 sm:py-4">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -41,6 +41,38 @@ try {
 
 function handleGet($conn) {
     try {
+        // Check if requesting a specific doctor by ID
+        if (isset($_GET['doctor_id'])) {
+            $doctor_id = (int) $_GET['doctor_id'];
+            
+            $stmt = $conn->prepare("SELECT 
+                        doctor_id as id,
+                        name,
+                        specialization,
+                        email,
+                        department,
+                        status,
+                        created_at,
+                        updated_at
+                      FROM doctors 
+                      WHERE doctor_id = ?");
+            $stmt->bind_param("i", $doctor_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($row = $result->fetch_assoc()) {
+                echo json_encode([
+                    'success' => true,
+                    'data' => $row
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode(['error' => 'Doctor not found']);
+            }
+            return;
+        }
+        
+        // Return all doctors
         $query = "SELECT 
                     doctor_id as id,
                     name,
@@ -165,14 +197,30 @@ function handlePut($conn) {
                 throw new Exception("Failed to update status: " . $stmt->error);
             }
         } else {
-            // Full update
+            // Full update - preserve current status if not provided
+            $status = isset($input['status']) ? $input['status'] : null;
+            
+            // If status is not provided, get current status from database
+            if ($status === null) {
+                $status_stmt = $conn->prepare("SELECT status FROM doctors WHERE doctor_id = ?");
+                $status_stmt->bind_param("i", $doctor_id);
+                $status_stmt->execute();
+                $status_result = $status_stmt->get_result();
+                if ($status_row = $status_result->fetch_assoc()) {
+                    $status = $status_row['status'];
+                } else {
+                    $status = 'Active'; // Default fallback
+                }
+                $status_stmt->close();
+            }
+            
             $stmt = $conn->prepare("UPDATE doctors SET name = ?, specialization = ?, email = ?, department = ?, status = ? WHERE doctor_id = ?");
             $stmt->bind_param("sssssi", 
                 $input['name'], 
                 $input['role'], 
                 $input['email'], 
                 $input['department'], 
-                $input['status'], 
+                $status, 
                 $doctor_id
             );
             

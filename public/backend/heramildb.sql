@@ -68,6 +68,38 @@ CREATE TABLE `bill_items` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `departments`
+--
+
+CREATE TABLE `departments` (
+  `department_id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `roles` text DEFAULT NULL,
+  `status` enum('Active','Inactive') DEFAULT 'Active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `departments`
+--
+
+INSERT INTO `departments` (`department_id`, `name`, `description`, `roles`, `status`, `created_at`, `updated_at`) VALUES
+(1, 'General Medicine', 'General medical practice and primary care', 'General Medicine', 'Active', NOW(), NOW()),
+(2, 'Cardiology', 'Heart and cardiovascular system specialist care', 'Cardiologist', 'Active', NOW(), NOW()),
+(3, 'Pediatrics', 'Medical care for infants, children, and adolescents', 'Pediatrician', 'Active', NOW(), NOW()),
+(4, 'Radiology', 'Medical imaging and diagnostic imaging services', 'Radiologist', 'Active', NOW(), NOW()),
+(5, 'Emergency', 'Emergency and urgent care services', 'Registered Nurse', 'Active', NOW(), NOW()),
+(6, 'Administration', 'Hospital administration and management', 'Administrator', 'Active', NOW(), NOW()),
+(7, 'Urology', 'Urinary system and male reproductive system care', 'Urologist', 'Active', NOW(), NOW()),
+(8, 'Dermatology', 'Skin, hair, and nail specialist care', 'Dermatologist', 'Active', NOW(), NOW()),
+(9, 'Neurology', 'Nervous system and brain specialist care', 'Neurologist', 'Active', NOW(), NOW()),
+(10, 'Orthopedics', 'Bone, joint, and musculoskeletal system care', 'Orthopedic Surgeon', 'Active', NOW(), NOW());
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `doctors`
 --
 
@@ -290,6 +322,13 @@ ALTER TABLE `bill_items`
   ADD KEY `bill_id` (`bill_id`);
 
 --
+-- Indexes for table `departments`
+--
+ALTER TABLE `departments`
+  ADD PRIMARY KEY (`department_id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
 -- Indexes for table `doctors`
 --
 ALTER TABLE `doctors`
@@ -354,6 +393,12 @@ ALTER TABLE `bills`
 --
 ALTER TABLE `bill_items`
   MODIFY `bill_item_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+
+--
+-- AUTO_INCREMENT for table `departments`
+--
+ALTER TABLE `departments`
+  MODIFY `department_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `doctors`

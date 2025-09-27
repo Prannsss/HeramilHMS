@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import Logo from "@/components/logo"
 import { useUserStore } from "@/hooks/use-user-store"
 import { useToast } from "@/hooks/use-toast"
+import { SimpleThemeToggle } from "@/components/theme-toggle"
 
 interface LoginResponse {
   status: string
@@ -242,7 +243,10 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4">
+        <SimpleThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <header className="mb-8 flex flex-col items-center">
           <Logo />

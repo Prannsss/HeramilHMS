@@ -70,7 +70,6 @@ function getAvailableRoomsByFloor($conn) {
     return array_values($floors);
 }
 
-// Handle different HTTP methods
 switch ($_SERVER['REQUEST_METHOD']) {
     case 'GET':
         try {
@@ -91,7 +90,6 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     ];
                 }
                 
-                // Get vacant rooms grouped by floor for dropdown
                 $rooms_query = "
                     SELECT 
                         r.room_id,

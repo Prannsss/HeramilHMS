@@ -31,7 +31,7 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full mt-2">
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
             <AvatarImage src={avatar || "https://placehold.co/100x100.png"} alt="@user" data-ai-hint="user avatar" />
             <AvatarFallback></AvatarFallback>
@@ -42,10 +42,10 @@ export function UserNav() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {user?.name || (user?.role === 'Admin' ? 'Administrator' : 'User')}
+              {isAdmin ? 'Administrator' : (user?.name || 'User')}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {user?.email || 'user@example.com'}
+              {isAdmin ? 'admin@heramil.com' : (user?.email || 'user@example.com')}
             </p>
           </div>
         </DropdownMenuLabel>

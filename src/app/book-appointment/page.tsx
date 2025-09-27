@@ -43,6 +43,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { SimpleThemeToggle } from '@/components/theme-toggle';
 
 const appointmentFormSchema = z.object({
   name: z.string().min(2, {
@@ -327,7 +328,10 @@ export default function BookAppointmentPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4">
+        <SimpleThemeToggle />
+      </div>
       <div className="w-full max-w-lg">
         <header className="mb-8 flex flex-col items-center">
           <Logo />

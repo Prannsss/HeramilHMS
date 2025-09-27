@@ -326,25 +326,72 @@ export default function DoctorProfilePage() {
     const { toast } = useToast();
     const { avatar, setAvatar, user } = useUserStore();
     const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+    const [profileData, setProfileData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const profileForm = useForm<z.infer<typeof profileFormSchema>>({
         resolver: zodResolver(profileFormSchema),
         defaultValues: {
-            name: user?.name || '',
-            email: user?.email || '',
-            specialization: user?.specialization || '',
+            name: '',
+            email: '',
+            specialization: '',
         },
     });
 
-    // Update form values when user data changes
-    useEffect(() => {
-        if (user) {
-            profileForm.setValue('name', user.name || '');
-            profileForm.setValue('email', user.email || '');
-            profileForm.setValue('specialization', user.specialization || '');
+    // Fetch profile data directly from database
+    const fetchProfileData = useCallback(async () => {
+        const doctorId = user?.doctor_id || user?.id;
+        if (!doctorId) {
+            console.log('No doctor_id found in user:', user);
+            return;
         }
-    }, [user, profileForm]);
+
+        try {
+            setIsLoading(true);
+            const url = `http://localhost/HeramilHMS/public/backend/api/doctors.php?doctor_id=${doctorId}`;
+            console.log('Fetching profile data from:', url);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const responseText = await response.text();
+            console.log('Raw response:', responseText.substring(0, 200) + '...');
+            
+            const data = JSON.parse(responseText);
+            
+            if (data.success && data.data) {
+                console.log('Profile data received:', data.data);
+                setProfileData(data.data);
+            } else {
+                console.error('Failed to fetch profile data:', data.error || data);
+                toast({
+                    title: 'Error',
+                    description: 'Failed to load profile data.',
+                    variant: 'destructive',
+                    duration: 3000,
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching profile data:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to load profile data. Please try again.',
+                variant: 'destructive',
+                duration: 3000,
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, toast]);
+
+    // Fetch data when component mounts or user changes
+    useEffect(() => {
+        fetchProfileData();
+    }, [fetchProfileData]);
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click();
@@ -423,60 +470,56 @@ export default function DoctorProfilePage() {
 
                 <div className="lg:col-span-2 space-y-8">
                     <Card>
-                        <Form {...profileForm}>
-                            <div>
-                                <CardHeader>
-                                    <CardTitle>Personal Information</CardTitle>
-                                    <CardDescription>
-                                        Your profile information (read-only).
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <FormField
-                                        control={profileForm.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Full Name</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} readOnly className="bg-muted" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={profileForm.control}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Email Address</FormLabel>
-                                                <FormControl>
-                                                    <Input type="email" {...field} readOnly className="bg-muted" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={profileForm.control}
-                                        name="specialization"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Specialization</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} readOnly className="bg-muted" />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-                                <CardFooter className="flex justify-end">
-                                    <ChangePasswordModal />
-                                </CardFooter>
-                            </div>
-                        </Form>
+                        <CardHeader>
+                            <CardTitle>Personal Information</CardTitle>
+                            <CardDescription>
+                                Your profile information
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {isLoading ? (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
+                                        <div className="h-4 bg-muted animate-pulse rounded"></div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Email Address</Label>
+                                        <div className="h-4 bg-muted animate-pulse rounded"></div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Specialization</Label>
+                                        <div className="h-4 bg-muted animate-pulse rounded"></div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Department</Label>
+                                        <div className="h-4 bg-muted animate-pulse rounded"></div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Full Name</Label>
+                                        <p className="text-sm">{profileData?.name || 'Not provided'}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Email Address</Label>
+                                        <p className="text-sm">{profileData?.email || 'Not provided'}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Specialization</Label>
+                                        <p className="text-sm">{profileData?.specialization || 'Not provided'}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium text-muted-foreground">Department</Label>
+                                        <p className="text-sm">{profileData?.department || 'Not provided'}</p>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                        <CardFooter className="flex justify-end">
+                            <ChangePasswordModal />
+                        </CardFooter>
                     </Card>
                 </div>
             </div>

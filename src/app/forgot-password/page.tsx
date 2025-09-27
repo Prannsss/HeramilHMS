@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { SimpleThemeToggle } from '@/components/theme-toggle';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email({
@@ -62,7 +63,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4">
+        <SimpleThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <header className="mb-8 flex flex-col items-center">
           <Logo />

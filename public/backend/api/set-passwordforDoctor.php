@@ -1,34 +1,28 @@
 <?php
 require_once '../db_connect.php';
 
-// Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// Set content type and CORS headers
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// Only allow POST method
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     exit();
 }
 
-// Get raw input first
 $raw_input = file_get_contents('php://input');
 error_log("Raw input: " . $raw_input);
 
 try {
-    // Get input data
     $input = json_decode($raw_input, true);
     
-    // Log the parsed input for debugging
     error_log("Parsed input: " . json_encode($input));
     
     if (!$input) {
@@ -41,43 +35,35 @@ try {
         exit();
     }
     
-    // Accept both 'doctor_id' and 'id' for backwards compatibility
     $doctor_id_input = $input['doctor_id'] ?? $input['id'];
     $password = trim($input['password']);
     
-    // Extract numeric ID from formatted ID (STF001 -> 1)
     if (is_string($doctor_id_input) && preg_match('/^STF(\d+)$/', $doctor_id_input, $matches)) {
         $doctor_id = intval($matches[1]);
     } else {
         $doctor_id = intval($doctor_id_input);
     }
     
-    // Log for debugging
     error_log("Input doctor_id: " . $doctor_id_input . ", processed numeric doctor_id: " . $doctor_id . ", password length: " . strlen($password));
     
-    // Validate doctor_id
     if ($doctor_id <= 0) {
         echo json_encode(['success' => false, 'error' => 'Invalid doctor ID: ' . $doctor_id_input . ' (could not extract numeric ID)']);
         exit();
     }
     
-    // Validate password strength (minimum 6 characters)
     if (strlen($password) < 6) {
         echo json_encode(['success' => false, 'error' => 'Password must be at least 6 characters long']);
         exit();
     }
     
-    // Check if doctor exists
     $check_doctor_query = "SELECT doctor_id, email FROM doctors WHERE doctor_id = ?";
     $check_stmt = $conn->prepare($check_doctor_query);
     
-    // Bind as integer since we've converted the ID
     $check_stmt->bind_param("i", $doctor_id);
     $check_stmt->execute();
     $doctor_result = $check_stmt->get_result();
     
     if ($doctor_result->num_rows === 0) {
-        // Log for debugging
         error_log("Doctor not found with ID: " . $doctor_id);
         echo json_encode(['success' => false, 'error' => 'Doctor not found with ID: ' . $doctor_id]);
         exit();
@@ -86,10 +72,8 @@ try {
     $doctor = $doctor_result->fetch_assoc();
     $doctor_email = $doctor['email'];
     
-    // Hash the password using SHA-256 (matching the existing pattern in the database)
     $password_hash = hash('sha256', $password);
     
-    // Check if user already exists in users table
     $check_user_query = "SELECT user_id FROM users WHERE email = ?";
     $check_user_stmt = $conn->prepare($check_user_query);
     $check_user_stmt->bind_param("s", $doctor_email);
@@ -97,7 +81,6 @@ try {
     $user_result = $check_user_stmt->get_result();
     
     if ($user_result->num_rows > 0) {
-        // User exists, update password
         $update_user_query = "UPDATE users SET password_hash = ? WHERE email = ?";
         $update_stmt = $conn->prepare($update_user_query);
         $update_stmt->bind_param("ss", $password_hash, $doctor_email);

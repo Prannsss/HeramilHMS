@@ -49,7 +49,6 @@ interface DashboardData {
   recent_appointments: Appointment[];
 }
 
-// Fallback data in case API fails
 const fallbackAppointments = [
   {
     id: 1,
@@ -116,7 +115,6 @@ export default function AdminDashboardClient() {
         const result = await response.json();
         
         if (result.status === 'success') {
-          // Transform the API data to match our UI expectations
           const transformedAppointments = result.data.recent_appointments.map((apt: any) => ({
             id: apt.id,
             patient: {
